@@ -1,6 +1,6 @@
-# [Project name]
+# Travel Experiences
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Πλατφόρμα μεταφορών και επιλεγμένων ταξιδιωτικών εμπειριών για ταξιδιώτες, οδηγούς και operators.
 
 ## Run & Operate
 
@@ -22,23 +22,34 @@ _Replace the heading above with the project's name, and this line with one sente
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/travel-experiences` — responsive customer, driver και admin web app.
+- `artifacts/api-server/src/routes/travel.ts` — API handlers για εμπειρίες, quotes, bookings, jobs και driver review.
+- `artifacts/api-server/src/lib/travel-data.ts` — seed data και κοινή λογική δυναμικής τιμολόγησης.
+- `lib/api-spec/openapi.yaml` — source of truth για τα API contracts και τα generated hooks.
+- `lib/db/src/schema/travel.ts` — Drizzle schema για experiences, bookings, driver jobs και drivers.
+- `artifacts/travel-experiences/src/index.css` — κοινό visual theme και responsive styles.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Το API contract ορίζεται πρώτα στο OpenAPI και οι client/Zod τύποι παράγονται με Orval.
+- Το MVP χρησιμοποιεί το προρυθμισμένο PostgreSQL και seed data για να είναι άμεσα εξερευνήσιμο.
+- Η custom τιμολόγηση υπολογίζει βασική χρέωση, χιλιόμετρα, ώρες, vehicle multiplier, passenger adjustment και platform fee 18%.
+- Τα payment, maps, authentication και live tracking παραμένουν επόμενα integrations· το πρώτο build κρατά τις ροές λειτουργικές χωρίς εξωτερικά credentials.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Οι ταξιδιώτες ανακαλύπτουν curated experiences, φτιάχνουν custom διαδρομή με quote και δημιουργούν κράτηση με προκαταβολή ή εξόφληση.
+- Οι οδηγοί βλέπουν διαθέσιμες δουλειές και μπορούν να κάνουν claim με το όχημά τους.
+- Οι operators βλέπουν φακέλους συνεργατών και εγκρίνουν ή απορρίπτουν αιτήσεις.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Όλες οι απαντήσεις προς τον χρήστη και το UI πρέπει να είναι στα ελληνικά.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Μετά από αλλαγές στο `lib/api-spec/openapi.yaml` πρέπει να τρέχει codegen πριν χρησιμοποιηθούν τα generated hooks.
+- Η τρέχουσα έκδοση Zod δεν υποστηρίζει το παραγόμενο `zod.int()`, επομένως τα integer πεδία του OpenAPI δηλώνονται ως number και γίνεται στρογγυλοποίηση στο boundary όπου χρειάζεται.
 
 ## Pointers
 

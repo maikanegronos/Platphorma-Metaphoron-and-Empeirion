@@ -1,0 +1,1 @@
+- [API codegen and Zod compatibility](api-codegen-zod.md) — OpenAPI integer schemas need numeric boundary types with application-level integer enforcement in this workspace.

@@ -3,13 +3,21 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Travel Experiences marketplace API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: experiences
+    description: Curated and custom travel experiences
+  - name: bookings
+    description: Customer bookings
+  - name: driver
+    description: Driver marketplace and dispatch
+  - name: admin
+    description: Back-office operations
 paths:
   /healthz:
     get:
@@ -24,7 +32,200 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /experiences:
+    get:
+      operationId: listExperiences
+      tags: [experiences]
+      summary: List curated experiences
+      responses:
+        "200":
+          description: Curated experiences
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Experience"
+  /experiences/{id}:
+    get:
+      operationId: getExperience
+      tags: [experiences]
+      summary: Get a curated experience
+      parameters:
+        - $ref: "#/components/parameters/ExperienceId"
+      responses:
+        "200":
+          description: Experience
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Experience"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /quotes:
+    post:
+      operationId: createQuote
+      tags: [experiences]
+      summary: Calculate a custom experience quote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteInput"
+      responses:
+        "200":
+          description: Calculated quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quote"
+  /bookings:
+    get:
+      operationId: listBookings
+      tags: [bookings]
+      summary: List customer bookings
+      parameters:
+        - name: customerId
+          in: query
+          schema:
+            type: string
+            default: demo-customer
+      responses:
+        "200":
+          description: Bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
+    post:
+      operationId: createBooking
+      tags: [bookings]
+      summary: Create a booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingInput"
+      responses:
+        "201":
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+  /driver/jobs:
+    get:
+      operationId: listDriverJobs
+      tags: [driver]
+      summary: List dispatch jobs for drivers
+      responses:
+        "200":
+          description: Available jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DriverJob"
+  /driver/jobs/{id}/claim:
+    post:
+      operationId: claimDriverJob
+      tags: [driver]
+      summary: Claim a dispatch job
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobClaimInput"
+      responses:
+        "200":
+          description: Claimed job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DriverJob"
+        "409":
+          description: Job is no longer available
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [bookings]
+      summary: Get customer dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /admin/drivers:
+    get:
+      operationId: listAdminDrivers
+      tags: [admin]
+      summary: List drivers awaiting review
+      responses:
+        "200":
+          description: Driver applications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Driver"
+  /admin/drivers/{id}/review:
+    patch:
+      operationId: reviewDriver
+      tags: [admin]
+      summary: Approve or reject a driver
+      parameters:
+        - $ref: "#/components/parameters/DriverId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DriverReviewInput"
+      responses:
+        "200":
+          description: Updated driver
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Driver"
 components:
+  parameters:
+    ExperienceId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    JobId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    DriverId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +234,140 @@ components:
           type: string
       required:
         - status
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+    Experience:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        location: { type: string }
+        durationHours: { type: number }
+        priceFrom: { type: number }
+        category: { type: string }
+        description: { type: string }
+        imageUrl: { type: string }
+        highlights:
+          type: array
+          items: { type: string }
+        rating: { type: number }
+        reviewCount: { type: number }
+      required: [id, title, location, durationHours, priceFrom, category, description, imageUrl, highlights, rating, reviewCount]
+    QuoteInput:
+      type: object
+      properties:
+        pickup: { type: string, minLength: 1 }
+        stops:
+          type: array
+          items: { type: string }
+        date: { type: string, format: date }
+        startTime: { type: string }
+        durationHours: { type: number, minimum: 1 }
+        passengers: { type: number, minimum: 1 }
+        vehicleType: { type: string, enum: [sedan, van, minibus, bus] }
+      required: [pickup, stops, date, startTime, durationHours, passengers, vehicleType]
+    Quote:
+      type: object
+      properties:
+        id: { type: string }
+        distanceKm: { type: number }
+        durationHours: { type: number }
+        subtotal: { type: number }
+        platformFee: { type: number }
+        total: { type: number }
+        deposit: { type: number }
+        currency: { type: string }
+        breakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/PriceLine"
+      required: [id, distanceKm, durationHours, subtotal, platformFee, total, deposit, currency, breakdown]
+    PriceLine:
+      type: object
+      properties:
+        label: { type: string }
+        amount: { type: number }
+      required: [label, amount]
+    BookingInput:
+      type: object
+      properties:
+        customerId: { type: string }
+        experienceId: { type: string }
+        title: { type: string }
+        date: { type: string, format: date }
+        passengers: { type: number, minimum: 1 }
+        pickup: { type: string }
+        total: { type: number, minimum: 0 }
+        paymentPlan: { type: string, enum: [deposit, full] }
+      required: [customerId, title, date, passengers, pickup, total, paymentPlan]
+    Booking:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        date: { type: string, format: date }
+        pickup: { type: string }
+        passengers: { type: number }
+        total: { type: number }
+        paid: { type: number }
+        status: { type: string, enum: [confirmed, pending, in-progress, completed, cancelled] }
+        driverName: { type: ["string", "null"] }
+        vehicle: { type: ["string", "null"] }
+      required: [id, title, date, pickup, passengers, total, paid, status, driverName, vehicle]
+    DriverJob:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        date: { type: string, format: date }
+        time: { type: string }
+        pickup: { type: string }
+        destination: { type: string }
+        passengers: { type: number }
+        vehicleType: { type: string }
+        payout: { type: number }
+        distanceKm: { type: number }
+        status: { type: string, enum: [open, claimed, completed] }
+        isCustom: { type: boolean }
+      required: [id, title, date, time, pickup, destination, passengers, vehicleType, payout, distanceKm, status, isCustom]
+    JobClaimInput:
+      type: object
+      properties:
+        driverId: { type: string }
+        vehicle: { type: string }
+      required: [driverId, vehicle]
+    Driver:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        city: { type: string }
+        vehicle: { type: string }
+        vehicleType: { type: string }
+        rating: { type: number }
+        trips: { type: number }
+        status: { type: string, enum: [pending, approved, rejected] }
+        documents: { type: number }
+      required: [id, name, city, vehicle, vehicleType, rating, trips, status, documents]
+    DriverReviewInput:
+      type: object
+      properties:
+        status: { type: string, enum: [approved, rejected] }
+      required: [status]
+    DashboardSummary:
+      type: object
+      properties:
+        upcomingCount: { type: number }
+        totalTrips: { type: number }
+        totalSpent: { type: number }
+        savedPlaces: { type: number }
+        nextBooking:
+          anyOf:
+            - $ref: "#/components/schemas/Booking"
+            - type: "null"
+      required: [upcomingCount, totalTrips, totalSpent, savedPlaces, nextBooking]
 

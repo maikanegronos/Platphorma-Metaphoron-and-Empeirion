@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Travel Experiences"
+description = "Μια πλατφόρμα μεταφορών και ταξιδιωτικών εμπειριών που συνδέει ταξιδιώτες με επαγγελματίες οδηγούς, προσφέροντας έτοιμες και custom εμπειρίες με δυναμική τιμολόγηση."
+version = "1.0.0"
+id = "artifacts/travel-experiences"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25259
+
+[services.development]
+run = "pnpm --filter @workspace/travel-experiences run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/travel-experiences", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/travel-experiences/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25259"
+BASE_PATH = "/"
