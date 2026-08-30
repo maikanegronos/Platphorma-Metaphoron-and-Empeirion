@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Aperion Travel Days — offline έκδοση της πλατφόρμας ταξιδιωτικών εμπειριών.">
+  <title>Aperion · Travel Days</title>
+  <style>
+    :root {
+      --ink: #173f4d;
+      --ink-soft: #27596a;
+      --cream: #f8f3ed;
+      --paper: #fffdfa;
+      --line: #dfd6ca;
+      --muted: #7a7b7b;
+      --coral: #f27850;
+      --coral-dark: #c96c4c;
+      --peach: #f5c297;
+      --sand: #e9dfd2;
+      --green: #d8eee4;
+      --green-ink: #1b664c;
+      --yellow: #faeac4;
+      --yellow-ink: #85601a;
+      --blue: #d6e8ed;
+      --blue-ink: #19566c;
+      --red: #f9d9d5;
+      --red-ink: #9b3b32;
+      --sans: "Trebuchet MS", "Segoe UI", Arial, sans-serif;
+      --display: Georgia, "Times New Roman", serif;
+      --mono: "Courier New", monospace;
+      --shadow: 0 16px 42px rgba(23, 63, 77, .12);
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; min-width: 320px; background: var(--cream); color: #263c43; font: 15px/1.55 var(--sans); }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; text-decoration: none; }
+    .app { min-height: 100vh; }
+    .sidebar {
+      position: fixed; inset: 0 auto 0 0; z-index: 20; width: 272px; padding: 28px 24px;
+      background: var(--ink); color: var(--cream); display: flex; flex-direction: column;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; color: var(--cream); }
+    .brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 16px; background: var(--coral); color: var(--ink); font-size: 23px; font-weight: 800; }
+    .brand-name { font: 700 23px var(--display); }
+    .brand-sub { display: block; margin-top: -2px; color: rgba(248,243,237,.54); font: 700 9px var(--mono); letter-spacing: .23em; text-transform: uppercase; }
+    .nav { margin-top: 50px; display: grid; gap: 7px; }
+    .nav button {
+      display: flex; align-items: center; gap: 12px; width: 100%; padding: 13px 14px; border: 0; border-radius: 14px;
+      background: transparent; color: rgba(248,243,237,.68); text-align: left; transition: .2s ease;
+    }
+    .nav button:hover { background: rgba(248,243,237,.08); color: var(--cream); }
+    .nav button.active { background: rgba(248,243,237,.14); color: var(--coral); }
+    .nav-icon { width: 19px; text-align: center; font-size: 19px; }
+    .nav-count { margin-left: auto; border-radius: 999px; padding: 2px 8px; background: rgba(242,120,80,.22); color: var(--coral); font: 11px var(--mono); }
+    .system-card { margin-top: auto; padding: 17px; border: 1px solid rgba(248,243,237,.12); border-radius: 17px; background: rgba(248,243,237,.06); color: rgba(248,243,237,.56); font-size: 12px; }
+    .system-line { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: rgba(248,243,237,.58); font: 10px var(--mono); text-transform: uppercase; letter-spacing: .08em; }
+    .system-dot { width: 8px; height: 8px; border-radius: 50%; background: #8fd1af; }
+    .main { margin-left: 272px; min-height: 100vh; }
+    .topbar {
+      position: sticky; top: 0; z-index: 10; height: 72px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px; border-bottom: 1px solid rgba(223,214,202,.82); background: rgba(248,243,237,.92); backdrop-filter: blur(10px);
+    }
+    .topline { color: var(--muted); font: 10px var(--mono); letter-spacing: .22em; text-transform: uppercase; }
+    .profile { display: flex; align-items: center; gap: 12px; text-align: right; }
+    .profile-name { font-size: 12px; font-weight: 800; }
+    .profile-role { color: var(--muted); font-size: 10px; }
+    .avatar { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--peach); color: var(--ink); font: 15px var(--display); }
+    .mobile-menu { display: none; border: 0; background: transparent; color: var(--ink); font-size: 23px; }
+    .page { max-width: 1280px; margin: 0 auto; padding: 54px 40px; }
+    .hero { padding: 78px 40px 86px; background: radial-gradient(circle at 75% 15%, rgba(242,120,80,.24), transparent 30%), linear-gradient(135deg, #fffdfa, #eee5da); }
+    .hero-grid { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: 1.02fr .98fr; align-items: end; gap: 50px; }
+    .eyebrow { color: var(--coral-dark); font: 10px var(--mono); letter-spacing: .24em; text-transform: uppercase; }
+    h1, h2, h3 { margin: 0; color: var(--ink); font-family: var(--display); font-weight: 700; }
+    h1 { max-width: 700px; margin-top: 18px; font-size: clamp(52px, 7vw, 88px); line-height: .94; letter-spacing: -.045em; }
+    h1 em, .accent-text { color: var(--coral-dark); font-style: normal; }
+    .lead { max-width: 480px; margin: 27px 0 0; color: var(--muted); font-size: 16px; line-height: 1.75; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+    .button, .button-outline, .button-light {
+      display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 11px 18px;
+      border: 1px solid transparent; border-radius: 12px; font-size: 13px; font-weight: 800; transition: .2s ease;
+    }
+    .button { background: var(--ink); color: var(--cream); }
+    .button:hover { transform: translateY(-2px); background: var(--ink-soft); }
+    .button-outline { border-color: rgba(23,63,77,.2); background: rgba(255,253,250,.6); color: var(--ink); }
+    .button-outline:hover { border-color: var(--coral); }
+    .button-light { background: var(--coral); color: var(--ink); }
+    .button-light:hover { transform: translateY(-2px); background: #f7c995; }
+    .hero-art {
+      position: relative; min-height: 385px; overflow: hidden; border-radius: 32px;
+      background: linear-gradient(145deg, #d77857 0%, #edb07d 48%, #285a66 49%, #163e4b 100%); box-shadow: var(--shadow);
+    }
+    .hero-art:before { content: ""; position: absolute; width: 270px; height: 270px; right: -50px; top: 38px; border: 28px solid rgba(255,253,250,.22); border-radius: 50%; box-shadow: -150px 125px 0 -45px rgba(255,253,250,.12); }
+    .hero-art:after { content: "✦"; position: absolute; right: 28px; top: 24px; color: rgba(255,253,250,.75); font-size: 30px; }
+    .hero-art-copy { position: absolute; right: 25px; bottom: 24px; left: 25px; color: var(--cream); }
+    .hero-art-copy strong { display: block; margin-top: 5px; font: 30px/1.1 var(--display); }
+    .hero-art .eyebrow { color: #f7c995; }
+    .section { padding: 72px 40px; }
+    .section-inner { max-width: 1280px; margin: 0 auto; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 34px; }
+    .section-head h2 { margin-top: 8px; font-size: clamp(34px, 4vw, 52px); line-height: 1; }
+    .section-detail { max-width: 680px; margin: 14px 0 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { padding: 9px 15px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--muted); font-size: 12px; font-weight: 800; }
+    .chip.active, .chip:hover { border-color: var(--ink); background: var(--ink); color: var(--cream); }
+    .experience-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .card { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
+    .experience-card { transition: transform .2s ease, box-shadow .2s ease; }
+    .experience-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+    .experience-visual { position: relative; height: 208px; overflow: hidden; display: flex; align-items: end; padding: 18px; }
+    .visual-nafplio { background: linear-gradient(160deg, #df8966, #f4bd8f 52%, #1d5362 53%, #123e4b); }
+    .visual-paros { background: linear-gradient(145deg, #e7c68f, #f7e1c4 55%, #638e99 56%, #265e6d); }
+    .visual-mani { background: linear-gradient(155deg, #637c76, #c9b98e 50%, #223f46 51%, #173b49); }
+    .experience-visual:after { content: "✦"; position: absolute; top: 16px; right: 18px; color: rgba(255,253,250,.76); font-size: 25px; }
+    .visual-title { position: relative; z-index: 1; color: var(--cream); font: 23px/1.05 var(--display); text-shadow: 0 2px 18px rgba(0,0,0,.25); }
+    .tag { position: absolute; z-index: 2; top: 16px; left: 16px; padding: 5px 10px; border-radius: 999px; background: rgba(255,253,250,.9); color: var(--ink); font: 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .rating { position: absolute; z-index: 2; top: 16px; right: 16px; padding: 5px 9px; border-radius: 999px; background: rgba(23,63,77,.85); color: var(--cream); font-size: 11px; }
+    .card-body { padding: 20px; }
+    .card-title-row { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+    .card-title { font-size: 23px; line-height: 1.08; }
+    .price { color: var(--coral-dark); white-space: nowrap; font: 12px var(--mono); }
+    .meta { display: flex; flex-wrap: wrap; gap: 13px; margin-top: 13px; color: var(--muted); font-size: 12px; }
+    .description { margin: 13px 0 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .card-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+    .text-button { display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; color: var(--ink); font-size: 13px; font-weight: 800; }
+    .text-button:hover { color: var(--coral-dark); }
+    .custom-section { background: var(--sand); border-top: 1px solid rgba(23,63,77,.1); border-bottom: 1px solid rgba(23,63,77,.1); }
+    .custom-grid { display: grid; grid-template-columns: .85fr 1.15fr; align-items: center; gap: 52px; }
+    .custom-copy h2 { margin-top: 10px; font-size: clamp(42px, 5vw, 65px); line-height: .98; }
+    .custom-copy p { max-width: 430px; margin: 20px 0 0; color: var(--muted); font-size: 14px; line-height: 1.75; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 500px; margin-top: 30px; }
+    .step-no { color: var(--ink); font: 28px var(--display); }
+    .step-text { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .quote-form { padding: 30px; border-radius: 25px; background: var(--ink); color: var(--cream); box-shadow: 0 18px 40px rgba(23,63,77,.22); }
+    .quote-form h2 { margin-top: 8px; color: var(--cream); font-size: 32px; line-height: 1.1; }
+    .quote-icon { float: right; color: var(--coral); font-size: 25px; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 27px; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { display: block; margin-bottom: 6px; color: rgba(248,243,237,.57); font: 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .field input, .field select {
+      width: 100%; min-height: 42px; padding: 10px 11px; border: 1px solid rgba(248,243,237,.19); border-radius: 11px;
+      outline: 0; background: rgba(248,243,237,.08); color: var(--cream); font-size: 13px;
+    }
+    .field input:focus, .field select:focus { border-color: var(--coral); box-shadow: 0 0 0 3px rgba(242,120,80,.18); }
+    .field select option { background: var(--paper); color: var(--ink); }
+    .quote-form .button-light { width: 100%; margin-top: 22px; }
+    .page-intro { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 36px; }
+    .page-intro h1 { max-width: 800px; margin-top: 9px; font-size: clamp(43px, 6vw, 65px); }
+    .page-intro .lead { margin-top: 14px; font-size: 14px; }
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 31px; }
+    .metric { padding: 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
+    .metric.accent { border-color: rgba(242,120,80,.4); background: rgba(242,120,80,.1); }
+    .metric-label { color: var(--muted); font: 10px var(--mono); letter-spacing: .15em; text-transform: uppercase; }
+    .metric-value { margin-top: 10px; color: var(--ink); font: 32px var(--display); }
+    .metric-foot { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 20px; padding-bottom: 11px; border-bottom: 1px solid var(--line); }
+    .tab { padding: 9px 15px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font-size: 12px; font-weight: 800; }
+    .tab.active { background: var(--ink); color: var(--cream); }
+    .booking-list, .job-grid { display: grid; gap: 15px; }
+    .booking-card { padding: 22px 24px; }
+    .booking-card.featured { border-color: rgba(242,120,80,.5); box-shadow: 0 10px 35px rgba(242,120,80,.12); }
+    .booking-top { display: flex; align-items: center; justify-content: space-between; gap: 22px; }
+    .booking-heading { display: flex; align-items: start; gap: 15px; }
+    .booking-symbol { display: grid; place-items: center; flex: 0 0 56px; width: 56px; height: 56px; border-radius: 16px; background: var(--sand); color: var(--ink); font-size: 23px; }
+    .featured .booking-symbol { background: var(--coral); }
+    .booking-title { font-size: 25px; line-height: 1.1; }
+    .booking-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 9px; color: var(--muted); font-size: 12px; }
+    .booking-total { display: flex; align-items: center; gap: 20px; }
+    .booking-total-label { color: var(--muted); font: 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .booking-total-value { color: var(--ink); font: 25px var(--display); }
+    .booking-paid { color: var(--muted); font-size: 11px; }
+    .round-button { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 50%; background: transparent; color: var(--ink); font-size: 18px; transition: .2s; }
+    .round-button:hover { border-color: var(--coral); color: var(--coral-dark); }
+    .booking-details { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
+    .detail-box { padding: 14px; border-radius: 12px; background: #f0ebe4; }
+    .detail-label { color: var(--muted); font-size: 11px; }
+    .detail-value { margin-top: 6px; color: var(--ink); font-size: 13px; font-weight: 800; }
+    .status { display: inline-flex; padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; }
+    .status.confirmed, .status.approved { background: var(--green); color: var(--green-ink); }
+    .status.pending, .status.open { background: var(--yellow); color: var(--yellow-ink); }
+    .status.claimed { background: var(--blue); color: var(--blue-ink); }
+    .status.rejected, .status.cancelled { background: var(--red); color: var(--red-ink); }
+    .driver-page { background: #e9eef0; min-height: calc(100vh - 72px); }
+    .driver-profile { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 28px; padding: 17px 20px; border: 1px solid #c8d5d9; border-radius: 17px; background: #f9fbfa; }
+    .driver-person { display: flex; align-items: center; gap: 12px; }
+    .driver-avatar { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; background: var(--ink); color: var(--cream); font-size: 20px; }
+    .driver-name { color: var(--ink); font-size: 13px; font-weight: 800; }
+    .driver-sub { color: var(--muted); font-size: 11px; }
+    .vehicle-select { padding: 10px 12px; border: 1px solid #bfd0d5; border-radius: 10px; background: #f6f7f6; color: var(--ink); font-size: 12px; font-weight: 800; }
+    .job-grid { grid-template-columns: repeat(2, 1fr); }
+    .job-card { padding: 22px; border-color: #c5d4d8; background: #f9fbfa; }
+    .job-top { display: flex; align-items: start; justify-content: space-between; gap: 14px; }
+    .job-title { font-size: 25px; }
+    .job-price { color: var(--ink); font: 25px var(--display); }
+    .job-route { display: grid; grid-template-columns: 18px 1fr; gap: 10px; margin-top: 18px; color: var(--muted); font-size: 12px; }
+    .route-line { position: relative; display: flex; align-items: center; flex-direction: column; color: var(--coral); font-size: 11px; }
+    .route-line:after { content: ""; width: 1px; height: 25px; margin: 3px 0; background: #bfd0d5; }
+    .job-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #d8e1e3; }
+    .admin-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
+    .admin-table { width: 100%; min-width: 760px; border-collapse: collapse; text-align: left; }
+    .admin-table th { padding: 15px 18px; color: var(--muted); font: 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+    .admin-table td { padding: 18px; border-top: 1px solid var(--line); color: #405057; font-size: 13px; vertical-align: middle; }
+    .partner { display: flex; align-items: center; gap: 11px; }
+    .partner-avatar { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; background: var(--sand); color: var(--ink); font-weight: 800; }
+    .partner-name { color: var(--ink); font-weight: 800; }
+    .partner-id { color: var(--muted); font: 10px var(--mono); }
+    .table-actions { display: flex; gap: 7px; }
+    .mini-button { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font-size: 11px; font-weight: 800; }
+    .mini-button:hover { border-color: var(--ink); }
+    .mini-button.approve { border-color: #abd7bf; background: #eef9f2; color: var(--green-ink); }
+    .mini-button.reject { border-color: #e5b2aa; background: #fff3f0; color: var(--red-ink); }
+    .empty { padding: 54px 20px; border: 1px dashed var(--line); border-radius: var(--radius); background: rgba(255,253,250,.5); text-align: center; }
+    .empty-icon { color: var(--coral); font-size: 30px; }
+    .empty h3 { margin-top: 9px; font-size: 26px; }
+    .empty p { max-width: 390px; margin: 8px auto 0; color: var(--muted); font-size: 13px; }
+    .modal-backdrop { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgba(23,63,77,.56); backdrop-filter: blur(8px); }
+    .modal { width: min(100%, 520px); max-height: 90vh; overflow: auto; padding: 30px; border-radius: 25px; background: var(--paper); box-shadow: 0 25px 80px rgba(0,0,0,.2); }
+    .modal-head { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+    .modal h2 { margin-top: 7px; font-size: 36px; line-height: 1.03; }
+    .close { border: 0; background: transparent; color: var(--muted); font-size: 27px; line-height: 1; }
+    .breakdown { display: grid; gap: 11px; margin: 22px 0; padding: 19px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .breakdown-row { display: flex; justify-content: space-between; gap: 16px; color: var(--muted); font-size: 13px; }
+    .breakdown-row strong { color: var(--ink); }
+    .breakdown-total { color: var(--ink); font-weight: 800; }
+    .booking-summary { display: grid; gap: 10px; margin-top: 20px; padding: 16px; border-radius: 15px; background: #f0ebe4; color: var(--muted); font-size: 13px; }
+    .booking-summary strong { color: var(--ink); }
+    .notice { display: flex; gap: 10px; padding: 14px; border: 1px solid #abd7bf; border-radius: 14px; background: #eef9f2; color: var(--green-ink); font-size: 13px; }
+    .toast { position: fixed; right: 22px; bottom: 22px; z-index: 80; max-width: 340px; padding: 14px 17px; border-radius: 13px; background: var(--ink); color: var(--cream); box-shadow: var(--shadow); font-size: 13px; }
+    .download-button { position: fixed; right: 20px; bottom: 20px; z-index: 15; display: inline-flex; align-items: center; gap: 8px; padding: 11px 15px; border: 1px solid rgba(23,63,77,.14); border-radius: 999px; background: rgba(255,253,250,.92); color: var(--ink); box-shadow: 0 8px 22px rgba(23,63,77,.12); font-size: 11px; font-weight: 800; }
+    .download-button:hover { transform: translateY(-2px); border-color: var(--coral); }
+    .hidden { display: none !important; }
+    @media (max-width: 1100px) {
+      .experience-grid { grid-template-columns: repeat(2, 1fr); }
+      .experience-grid .experience-card:last-child { grid-column: 1 / -1; max-width: calc(50% - 10px); }
+      .hero-grid { gap: 30px; }
+    }
+    @media (max-width: 860px) {
+      .sidebar { transform: translateX(-100%); transition: transform .25s ease; }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; }
+      .topbar { padding: 0 20px; }
+      .mobile-menu { display: block; }
+      .topline { display: none; }
+      .page, .section { padding-right: 20px; padding-left: 20px; }
+      .hero { padding: 54px 20px 62px; }
+      .hero-grid, .custom-grid { grid-template-columns: 1fr; }
+      .hero-art { min-height: 310px; }
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .page-intro, .section-head { align-items: start; flex-direction: column; }
+      .job-grid { grid-template-columns: 1fr; }
+      .download-button { bottom: 16px; }
+    }
+    @media (max-width: 560px) {
+      .profile-name, .profile-role { display: none; }
+      h1 { font-size: 54px; }
+      .experience-grid { grid-template-columns: 1fr; }
+      .experience-grid .experience-card:last-child { grid-column: auto; max-width: none; }
+      .form-grid, .booking-details { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .metrics { grid-template-columns: 1fr 1fr; }
+      .metric { padding: 15px; }
+      .metric-value { font-size: 27px; }
+      .booking-top, .booking-total, .driver-profile { align-items: start; flex-direction: column; }
+      .booking-total { width: 100%; border-top: 1px solid var(--line); padding-top: 14px; }
+      .booking-heading { gap: 10px; }
+      .booking-symbol { flex-basis: 44px; width: 44px; height: 44px; font-size: 18px; }
+      .booking-title { font-size: 21px; }
+      .quote-form { padding: 23px; }
+      .steps { gap: 7px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#/" data-route="/">
+        <span class="brand-mark">◉</span>
+        <span><span class="brand-name">Aperion</span><span class="brand-sub">Travel days</span></span>
+      </a>
+      <nav class="nav" aria-label="Κύρια πλοήγηση">
+        <button data-route="/" class="active"><span class="nav-icon">◎</span><span>Ανακάλυψη</span></button>
+        <button data-route="/bookings"><span class="nav-icon">▣</span><span>Οι κρατήσεις μου</span><span class="nav-count" id="booking-count">02</span></button>
+        <button data-route="/driver"><span class="nav-icon">▱</span><span>Πίνακας οδηγού</span></button>
+        <button data-route="/admin"><span class="nav-icon">♢</span><span>Έλεγχος συνεργατών</span></button>
+      </nav>
+      <div class="system-card">
+        <div class="system-line"><span class="system-dot"></span> Σύστημα ενεργό</div>
+        Μετακινήσεις με ρυθμό, φροντίδα και τοπική γνώση.
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="mobile-menu" id="menu-button" aria-label="Άνοιγμα μενού">☰</button>
+        <span class="topline">Νησιά, πόλεις, ιστορίες</span>
+        <div class="profile"><div><div class="profile-name">Μαρίνα Κ.</div><div class="profile-role">Ταξιδιώτης</div></div><span class="avatar">ΜΚ</span></div>
+      </header>
+      <main id="view"></main>
+    </div>
+    <button class="download-button" id="download-button" title="Κατέβασε ξανά αυτό το HTML">↓ Κατέβασε HTML</button>
+  </div>
+  <div id="modal-root"></div>
+  <div id="toast-root"></div>
+
+  <script>
+    const experiences = [
+      { id: "nafplio", title: "Ηλιοβασίλεμα στη Ναύσα", category: "Νησιά", location: "Πάρος", hours: 6, price: 222, rating: "4.9", reviews: 82, visual: "visual-nafplio", description: "Μια αργή, φωτεινή διαδρομή από τα σοκάκια της Νάουσας μέχρι το πιο όμορφο φως του νησιού." },
+      { id: "paros", title: "Χωριά & γεύσεις της Πάρου", category: "Νησιά", location: "Πάρος", hours: 8, price: 288, rating: "4.8", reviews: 64, visual: "visual-paros", description: "Λεύκες, Μάρπησσα και ένα τραπέζι που αξίζει να περιμένεις — με τον ρυθμό που ταιριάζει στην Πάρο." },
+      { id: "mani", title: "Πέτρινη Μάνη, ανοιχτός ορίζοντας", category: "Πελοπόννησος", location: "Αρεόπολη", hours: 9, price: 310, rating: "4.9", reviews: 47, visual: "visual-mani", description: "Πύργοι, μικροί όρμοι και ιστορίες του νότου. Μια ημέρα για να χαθείς σωστά." }
+    ];
+    const defaultBookings = [
+      { id: "bk-1", title: "Ηλιοβασίλεμα στη Νάουσα", date: "12 Σεπτεμβρίου 2026", pickup: "Paros Bay Hotel", passengers: 4, total: 222, paid: 67, status: "confirmed", driver: "Αλέξανδρος Μ.", vehicle: "Mercedes V-Class" },
+      { id: "bk-2", title: "Χωριά & γεύσεις της Πάρου", date: "20 Σεπτεμβρίου 2026", pickup: "Parikia Port", passengers: 2, total: 288, paid: 288, status: "pending", driver: "Αναμένεται ανάθεση", vehicle: "Θα ενημερωθεί σύντομα" }
+    ];
+    const jobs = [
+      { id: "job-1", title: "Πάρος · Γεύσεις & χωριά", from: "Paros Bay Hotel", to: "Λεύκες · Μάρπησσα · Νάουσα", time: "20 Σεπ · 09:30", passengers: 2, amount: 218, status: "open" },
+      { id: "job-2", title: "Αθήνα · Σούνιο στο φως", from: "Ξενοδοχείο Ακτή, Αθήνα", to: "Λίμνη Βουλιαγμένης · Σούνιο", time: "22 Σεπ · 10:00", passengers: 4, amount: 176, status: "open" },
+      { id: "job-3", title: "Μάνη · Πέτρινοι ορίζοντες", from: "Καλαμάτα Airport", to: "Αρεόπολη · Λιμένι", time: "24 Σεπ · 08:45", passengers: 4, amount: 295, status: "open" },
+      { id: "job-4", title: "Ναύπλιο · Μία μέρα", from: "Κέντρο Αθήνας", to: "Παλαμήδι · Καραθώνα · Παλιά πόλη", time: "26 Σεπ · 09:00", passengers: 6, amount: 240, status: "claimed" }
+    ];
+    const defaultPartners = [
+      { id: "AP-2048", name: "Γιώργος Νικολάου", area: "Πάρος", vehicle: "Mercedes V-Class", submitted: "28 Αυγ 2026", status: "pending" },
+      { id: "AP-2039", name: "Ελένη Μανωλάκη", area: "Αθήνα", vehicle: "Toyota Proace", submitted: "27 Αυγ 2026", status: "pending" },
+      { id: "AP-2017", name: "Στέλιος Κρητικός", area: "Καλαμάτα", vehicle: "Ford Transit", submitted: "21 Αυγ 2026", status: "approved" }
+    ];
+    let bookings = JSON.parse(localStorage.getItem("aperion-bookings") || "null") || defaultBookings;
+    let partners = JSON.parse(localStorage.getItem("aperion-partners") || "null") || defaultPartners;
+    let activeCategory = "Όλα";
+    let bookingFilter = "upcoming";
+    let activeQuote = null;
+    let openBooking = null;
+    let expandedBooking = null;
+    let toastTimer;
+
+    const euro = value => new Intl.NumberFormat("el-GR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value);
+    const save = () => {
+      localStorage.setItem("aperion-bookings", JSON.stringify(bookings));
+      localStorage.setItem("aperion-partners", JSON.stringify(partners));
+      document.getElementById("booking-count").textContent = String(bookings.filter(b => b.status !== "completed" && b.status !== "cancelled").length).padStart(2, "0");
+    };
+    const statusLabel = status => ({ confirmed: "Επιβεβαιωμένη", pending: "Σε αναμονή", open: "Ανοιχτή", claimed: "Ανατέθηκε", approved: "Εγκεκριμένος", rejected: "Απορρίφθηκε" }[status] || status);
+    const statusPill = status => `<span class="status ${status}">${statusLabel(status)}</span>`;
+    const dataTag = (icon, text) => `<span>${icon} ${text}</span>`;
+    const esc = text => String(text).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
+
+    function showToast(message) {
+      clearTimeout(toastTimer);
+      document.getElementById("toast-root").innerHTML = `<div class="toast">${message}</div>`;
+      toastTimer = setTimeout(() => document.getElementById("toast-root").innerHTML = "", 4200);
+    }
+
+    function experienceCard(item) {
+      return `<article class="card experience-card">
+        <div class="experience-visual ${item.visual}">
+          <span class="tag">${item.category}</span><span class="rating">★ ${item.rating}</span>
+          <span class="visual-title">${item.title}</span>
+        </div>
+        <div class="card-body">
+          <div class="card-title-row"><h3 class="card-title">${item.title}</h3><span class="price">από ${euro(item.price)}</span></div>
+          <div class="meta">${dataTag("⌖", item.location)}${dataTag("◷", item.hours + " ώρες")}</div>
+          <p class="description">${item.description}</p>
+          <div class="card-footer"><span>${item.reviews} αξιολογήσεις</span><button class="text-button" data-book="${item.id}">Κράτηση →</button></div>
+        </div>
+      </article>`;
+    }
+
+    function renderHome() {
+      const categories = ["Όλα", ...new Set(experiences.map(item => item.category))];
+      const visible = activeCategory === "Όλα" ? experiences : experiences.filter(item => item.category === activeCategory);
+      document.getElementById("view").innerHTML = `
+        <section class="hero">
+          <div class="hero-grid">
+            <div>
+              <div class="eyebrow">Αθήνα · Κυκλάδες · Πελοπόννησος</div>
+              <h1>Η μέρα σου,<br><em>όπως πρέπει</em><br>να είναι.</h1>
+              <p class="lead">Μετακίνηση που γίνεται ανάμνηση. Διάλεξε μια έτοιμη διαδρομή ή άφησέ μας να ενώσουμε τα σημεία που θέλεις να θυμάσαι.</p>
+              <div class="actions"><a class="button" href="#experiences">Δες εμπειρίες →</a><a class="button-outline" href="#custom">Φτιάξε τη δική σου</a></div>
+            </div>
+            <div class="hero-art"><div class="hero-art-copy"><div class="eyebrow">Σημερινή έμπνευση</div><strong>Το Ναύπλιο<br>σε μία μέρα</strong></div></div>
+          </div>
+        </section>
+        <section class="section" id="experiences">
+          <div class="section-inner">
+            <div class="section-head"><div><div class="eyebrow">Επιλεγμένες διαδρομές</div><h2>Μικρές αποδράσεις,<br>μεγάλη αίσθηση.</h2><p class="section-detail">Σχεδιασμένες από ανθρώπους που ξέρουν πού αξίζει να σταθείς — και πότε να μην κοιτάξεις το ρολόι.</p></div><div class="chips">${categories.map(category => `<button class="chip ${activeCategory === category ? "active" : ""}" data-category="${category}">${category}</button>`).join("")}</div></div>
+            <div class="experience-grid">${visible.map(experienceCard).join("")}</div>
+          </div>
+        </section>
+        <section class="section custom-section" id="custom">
+          <div class="section-inner custom-grid">
+            <div class="custom-copy"><div class="eyebrow">Custom, αλλά απλό</div><h2>Τα σημεία σου.<br><span class="accent-text">Ο ρυθμός σου.</span></h2><p>Πες μας από πού ξεκινάς, τι θέλεις να δεις και πόσο χρόνο έχεις. Η τιμή εμφανίζεται πριν αποφασίσεις.</p><div class="steps"><div><div class="step-no">01</div><div class="step-text">Συμπληρώνεις τη διαδρομή</div></div><div><div class="step-no">02</div><div class="step-text">Βλέπεις καθαρή τιμή</div></div><div><div class="step-no">03</div><div class="step-text">Κλείνεις χωρίς άγχος</div></div></div></div>
+            <form class="quote-form" id="quote-form"><span class="quote-icon">✧</span><div class="eyebrow">Φτιάξε τη δική σου μέρα</div><h2>Από πόρτα σε πόρτα,<br>χωρίς πρόγραμμα-παζλ.</h2><div class="form-grid">
+              <div class="field full"><label for="pickup">Σημείο παραλαβής</label><input id="pickup" required value="Ξενοδοχείο Ακτή, Αθήνα"></div>
+              <div class="field"><label for="stops">Στάσεις</label><input id="stops" value="Ναύπλιο" placeholder="π.χ. Αίγινα, Σούνιο"></div>
+              <div class="field"><label for="date">Ημερομηνία</label><input id="date" type="date" required value="2026-09-15"></div>
+              <div class="field"><label for="time">Ώρα εκκίνησης</label><input id="time" type="time" required value="09:30"></div>
+              <div class="field"><label for="duration">Διάρκεια</label><select id="duration"><option value="4">4 ώρες</option><option value="6">6 ώρες</option><option value="8" selected>8 ώρες</option><option value="10">10 ώρες</option></select></div>
+              <div class="field"><label for="passengers">Άτομα</label><select id="passengers"><option value="2">2 άτομα</option><option value="4" selected>4 άτομα</option><option value="6">6 άτομα</option><option value="8">8 άτομα</option></select></div>
+              <div class="field"><label for="vehicle">Όχημα</label><select id="vehicle"><option value="sedan">Sedan</option><option value="van" selected>Van</option><option value="minibus">Minibus</option><option value="bus">Bus</option></select></div>
+            </div><button class="button-light" type="submit">Υπολόγισε την τιμή →</button></form>
+          </div>
+        </section>`;
+      attachHomeEvents();
+    }
+
+    function attachHomeEvents() {
+      document.querySelectorAll("[data-category]").forEach(button => button.addEventListener("click", () => { activeCategory = button.dataset.category; renderHome(); document.getElementById("experiences").scrollIntoView({ behavior: "smooth" }); }));
+      document.querySelectorAll("[data-book]").forEach(button => button.addEventListener("click", () => openBookingModal(experiences.find(item => item.id === button.dataset.book))));
+      document.getElementById("quote-form").addEventListener("submit", event => {
+        event.preventDefault();
+        const duration = Number(document.getElementById("duration").value);
+        const passengers = Number(document.getElementById("passengers").value);
+        const vehicle = document.getElementById("vehicle").value;
+        const distance = Math.round(110 + (document.getElementById("stops").value.split(",").filter(Boolean).length * 24));
+        const multiplier = { sedan: .95, van: 1, minibus: 1.25, bus: 1.55 }[vehicle];
+        const base = 68, hours = duration * 24, distanceCost = distance * .72, passengerCost = Math.max(0, passengers - 2) * 8, subtotal = Math.round((base + hours + distanceCost + passengerCost) * multiplier), fee = Math.round(subtotal * .18), total = subtotal + fee;
+        activeQuote = { total, deposit: Math.round(total * .3), duration, passengers, pickup: document.getElementById("pickup").value, date: document.getElementById("date").value, time: document.getElementById("time").value, stops: document.getElementById("stops").value, breakdown: [["Βασική χρέωση", base], ["Χρόνος & διαδρομή", Math.round(hours + distanceCost)], ["Επιβάτες & όχημα", Math.round((subtotal - base - hours - distanceCost))], ["Τέλος πλατφόρμας", fee]] };
+        renderQuoteModal();
+      });
+    }
+
+    function renderBookings() {
+      const upcoming = bookings.filter(item => item.status !== "completed" && item.status !== "cancelled");
+      const visible = bookingFilter === "all" ? bookings : bookingFilter === "completed" ? bookings.filter(item => item.status === "completed") : upcoming;
+      const totalSpent = bookings.reduce((sum, item) => sum + item.total, 0);
+      document.getElementById("view").innerHTML = `<section class="page">
+        <div class="page-intro"><div><div class="eyebrow">Το ημερολόγιό σου</div><h1>Οι διαδρομές<br>που έρχονται.</h1><p class="lead">Ό,τι έχεις κλείσει, σε μία καθαρή εικόνα. Ο οδηγός, το όχημα και η ώρα — ακριβώς όπως πρέπει.</p></div><button class="button" data-route="/">Νέα κράτηση →</button></div>
+        <div class="metrics"><div class="metric accent"><div class="metric-label">Επερχόμενες</div><div class="metric-value">${String(upcoming.length).padStart(2, "0")}</div><div class="metric-foot">διαδρομές στο ημερολόγιο</div></div><div class="metric"><div class="metric-label">Συνολικά ταξίδια</div><div class="metric-value">${bookings.length}</div><div class="metric-foot">μέχρι σήμερα</div></div><div class="metric"><div class="metric-label">Συνολική δαπάνη</div><div class="metric-value">${euro(totalSpent)}</div><div class="metric-foot">σε όλες τις κρατήσεις</div></div><div class="metric"><div class="metric-label">Αποθηκευμένα μέρη</div><div class="metric-value">4</div><div class="metric-foot">για την επόμενη φορά</div></div></div>
+        <div class="tabs"><button class="tab ${bookingFilter === "upcoming" ? "active" : ""}" data-filter="upcoming">Επερχόμενες</button><button class="tab ${bookingFilter === "completed" ? "active" : ""}" data-filter="completed">Ολοκληρωμένες</button><button class="tab ${bookingFilter === "all" ? "active" : ""}" data-filter="all">Όλες</button></div>
+        <div class="booking-list">${visible.length ? visible.map((booking, index) => bookingCard(booking, index === 0 && bookingFilter === "upcoming")).join("") : `<div class="empty"><div class="empty-icon">◎</div><h3>${bookingFilter === "completed" ? "Δεν έχεις ολοκληρωμένες διαδρομές." : "Το ημερολόγιο είναι ανοιχτό."}</h3><p>Μια καλή μέρα ξεκινά με ένα σχέδιο. Ανακάλυψε μια διαδρομή και άφησε τα υπόλοιπα σε εμάς.</p><button class="button" data-route="/">Ανακάλυψε εμπειρίες</button></div>`}</div>
+      </section>`;
+      document.querySelectorAll("[data-filter]").forEach(button => button.addEventListener("click", () => { bookingFilter = button.dataset.filter; renderBookings(); }));
+      document.querySelectorAll("[data-toggle-booking]").forEach(button => button.addEventListener("click", () => { expandedBooking = expandedBooking === button.dataset.toggleBooking ? null : button.dataset.toggleBooking; renderBookings(); }));
+      document.querySelectorAll("[data-route]").forEach(button => button.addEventListener("click", event => { event.preventDefault(); navigate(button.dataset.route); }));
+    }
+
+    function bookingCard(booking, featured) {
+      return `<article class="card booking-card ${featured ? "featured" : ""}"><div class="booking-top"><div class="booking-heading"><div class="booking-symbol">▣</div><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h2 class="booking-title">${esc(booking.title)}</h2>${statusPill(booking.status)}</div><div class="booking-meta">${dataTag("▣", booking.date)}${dataTag("⌖", esc(booking.pickup))}${dataTag("♙", booking.passengers + " άτομα")}</div></div></div><div class="booking-total"><div><div class="booking-total-label">Σύνολο</div><div class="booking-total-value">${euro(booking.total)}</div><div class="booking-paid">Πληρωμένα ${euro(booking.paid)}</div></div><button class="round-button" data-toggle-booking="${booking.id}" aria-label="Λεπτομέρειες">${expandedBooking === booking.id ? "⌃" : "→"}</button></div></div>${expandedBooking === booking.id ? `<div class="booking-details"><div class="detail-box"><div class="detail-label">♙ Οδηγός</div><div class="detail-value">${esc(booking.driver)}</div></div><div class="detail-box"><div class="detail-label">▱ Όχημα</div><div class="detail-value">${esc(booking.vehicle)}</div></div><div class="detail-box"><div class="detail-label">☏ Υποστήριξη</div><div class="detail-value">Μιλήστε μαζί μας</div></div></div>` : ""}</article>`;
+    }
+
+    function renderDriver() {
+      const openJobs = jobs.filter(job => job.status === "open");
+      document.getElementById("view").innerHTML = `<section class="page driver-page"><div class="page-intro"><div><div class="eyebrow">Dispatch / Οδηγός</div><h1>Δούλεψε με<br>τον δικό σου ρυθμό.</h1><p class="lead">Οι ανοιχτές διαδρομές της ημέρας, με τα απαραίτητα στοιχεία για να αποφασίσεις γρήγορα και σωστά.</p></div><span class="status approved">● Συνδεδεμένος οδηγός</span></div>
+        <div class="driver-profile"><div class="driver-person"><div class="driver-avatar">▱</div><div><div class="driver-name">Νίκος Παπαδάκης</div><div class="driver-sub">Αθήνα · 4.92 αξιολόγηση · 186 διαδρομές</div></div></div><label class="driver-sub">Ενεργό όχημα <select class="vehicle-select"><option>Mercedes V-Class · ΙΝΧ 4821</option><option>Toyota Corolla · ΙΝΧ 3180</option><option>Ford Transit · ΙΝΧ 9032</option></select></label></div>
+        <div class="section-head"><div><h2>Ανοιχτές διαδρομές</h2><p class="section-detail">${openJobs.length} επιλογές κοντά σου</p></div><button class="button-outline" id="refresh-jobs">↻ Ανανέωση</button></div>
+        <div class="job-grid">${openJobs.length ? openJobs.map(jobCard).join("") : `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">✓</div><h3>Δεν υπάρχει ανοιχτή διαδρομή.</h3><p>Όταν προκύψει μια νέα διαδρομή στην περιοχή σου, θα εμφανιστεί εδώ.</p></div>`}</div></section>`;
+      document.querySelectorAll("[data-claim]").forEach(button => button.addEventListener("click", () => { const job = jobs.find(item => item.id === button.dataset.claim); job.status = "claimed"; showToast("Η διαδρομή ανατέθηκε στο όχημά σου."); renderDriver(); }));
+      document.getElementById("refresh-jobs").addEventListener("click", () => showToast("Η λίστα διαδρομών ανανεώθηκε."));
+    }
+
+    function jobCard(job) {
+      return `<article class="card job-card"><div class="job-top"><div><div class="eyebrow">${job.time}</div><h2 class="job-title">${job.title}</h2></div><div class="job-price">${euro(job.amount)}</div></div><div class="job-route"><div class="route-line">●<span>●</span></div><div><div><strong>Παραλαβή</strong><br>${job.from}</div><div style="margin-top:10px"><strong>Προορισμός</strong><br>${job.to}</div></div></div><div class="job-footer"><span class="meta" style="margin:0">${dataTag("♙", job.passengers + " επιβάτες")} ${statusPill(job.status)}</span><button class="button" data-claim="${job.id}">Ανάλαβε τη διαδρομή</button></div></article>`;
+    }
+
+    function renderAdmin() {
+      document.getElementById("view").innerHTML = `<section class="page"><div class="page-intro"><div><div class="eyebrow">Operations / Συνεργάτες</div><h1>Οι άνθρωποι<br>πίσω από τη διαδρομή.</h1><p class="lead">Έλεγξε τα στοιχεία, κράτησε την ποιότητα ψηλά και δώσε χώρο στους σωστούς ανθρώπους.</p></div><span class="status pending">${partners.filter(item => item.status === "pending").length} σε αναμονή</span></div>
+        <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Συνεργάτης</th><th>Περιοχή</th><th>Όχημα</th><th>Αίτηση</th><th>Κατάσταση</th><th>Ενέργειες</th></tr></thead><tbody>${partners.map(partner => `<tr><td><div class="partner"><span class="partner-avatar">${partner.name.split(" ").map(word => word[0]).slice(0,2).join("")}</span><span><span class="partner-name">${esc(partner.name)}</span><span class="partner-id">${partner.id}</span></span></div></td><td>${partner.area}</td><td>${partner.vehicle}</td><td>${partner.submitted}</td><td>${statusPill(partner.status)}</td><td><div class="table-actions">${partner.status === "pending" ? `<button class="mini-button approve" data-partner="${partner.id}" data-status="approved">Έγκριση</button><button class="mini-button reject" data-partner="${partner.id}" data-status="rejected">Απόρριψη</button>` : `<span style="color:var(--muted);font-size:11px">Ολοκληρώθηκε</span>`}</div></td></tr>`).join("")}</tbody></table></div>
+      </section>`;
+      document.querySelectorAll("[data-partner]").forEach(button => button.addEventListener("click", () => { const partner = partners.find(item => item.id === button.dataset.partner); partner.status = button.dataset.status; save(); showToast(button.dataset.status === "approved" ? "Ο συνεργάτης εγκρίθηκε." : "Η αίτηση απορρίφθηκε."); renderAdmin(); }));
+    }
+
+    function renderQuoteModal() {
+      const quote = activeQuote;
+      document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Η εκτίμησή σου</div><h2>${euro(quote.total)}</h2><p style="margin:5px 0 0;color:var(--muted);font-size:13px">${quote.duration} ώρες · ${quote.passengers} άτομα · ${esc(quote.pickup)}</p></div><button class="close" id="close-modal">×</button></div><div class="breakdown">${quote.breakdown.map(row => `<div class="breakdown-row"><span>${row[0]}</span><strong>${euro(row[1])}</strong></div>`).join("")}<div class="breakdown-row breakdown-total"><span>Προκαταβολή</span><strong>${euro(quote.deposit)}</strong></div></div><button class="button" style="width:100%" id="quote-book">Συνέχισε στην κράτηση →</button></div></div>`;
+      document.getElementById("close-modal").addEventListener("click", closeModal);
+      document.getElementById("quote-book").addEventListener("click", () => { const custom = { id: "custom-" + Date.now(), title: "Custom διαδρομή · " + quote.pickup, category: "Custom", location: quote.pickup, hours: quote.duration, price: quote.total, rating: "—", reviews: 0, visual: "visual-mani", description: "" }; closeModal(); openBookingModal(custom); });
+    }
+
+    function openBookingModal(item) {
+      openBooking = item;
+      document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Τελικό βήμα</div><h2>${esc(item.title)}</h2></div><button class="close" id="close-modal">×</button></div><div class="booking-summary">${dataTag("▣", "15 Σεπτεμβρίου 2026 · 09:30")}${dataTag("♙", "2 επιβάτες")}<div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:11px"><span>Σύνολο</span><strong>${euro(item.price)}</strong></div></div><button class="button" style="width:100%;margin-top:20px" id="confirm-booking">Επιβεβαίωσε με προκαταβολή</button><button class="text-button" style="width:100%;justify-content:center;margin-top:13px;color:var(--muted)" id="cancel-booking">Πίσω</button></div></div>`;
+      document.getElementById("close-modal").addEventListener("click", closeModal);
+      document.getElementById("cancel-booking").addEventListener("click", closeModal);
+      document.getElementById("confirm-booking").addEventListener("click", () => {
+        const newBooking = { id: "bk-" + Date.now(), title: item.title, date: "15 Σεπτεμβρίου 2026", pickup: item.location || "Ξενοδοχείο Ακτή, Αθήνα", passengers: 2, total: item.price, paid: Math.round(item.price * .3), status: "confirmed", driver: "Αναμένεται ανάθεση", vehicle: "Θα ενημερωθεί σύντομα" };
+        bookings.unshift(newBooking); save();
+        document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop"><div class="modal"><div class="notice">✓ <span>Η κράτησή σου καταχωρήθηκε. Θα βρεις όλες τις λεπτομέρειες στην ενότητα «Οι κρατήσεις μου».</span></div><button class="button" style="width:100%;margin-top:20px" id="view-bookings">Δες τις κρατήσεις →</button></div></div>`;
+        document.getElementById("view-bookings").addEventListener("click", () => { closeModal(); navigate("/bookings"); });
+      });
+    }
+
+    function closeModal() { activeQuote = null; openBooking = null; document.getElementById("modal-root").innerHTML = ""; }
+
+    function navigate(route) {
+      if (route === "/") renderHome();
+      if (route === "/bookings") renderBookings();
+      if (route === "/driver") renderDriver();
+      if (route === "/admin") renderAdmin();
+      document.querySelectorAll(".nav button").forEach(button => button.classList.toggle("active", button.dataset.route === route));
+      document.getElementById("sidebar").classList.remove("open");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    document.querySelectorAll("[data-route]").forEach(button => button.addEventListener("click", event => { event.preventDefault(); navigate(button.dataset.route); }));
+    document.getElementById("menu-button").addEventListener("click", () => document.getElementById("sidebar").classList.toggle("open"));
+    document.getElementById("download-button").addEventListener("click", () => {
+      const clone = document.documentElement.cloneNode(true);
+      clone.querySelector("#modal-root").innerHTML = "";
+      clone.querySelector("#toast-root").innerHTML = "";
+      const html = "<!doctype html>\n" + clone.outerHTML;
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "aperion-travel-experiences.html"; link.click(); URL.revokeObjectURL(link.href);
+      showToast("Το HTML αρχείο κατέβηκε.");
+    });
+    save();
+    navigate("/");
+  </script>
+</body>
+</html>
