@@ -332,6 +332,7 @@
     let activeQuote = null;
     let openBooking = null;
     let expandedBooking = null;
+    let offlinePaymentPlan = "deposit";
     let toastTimer;
 
     const euro = value => new Intl.NumberFormat("el-GR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value);
@@ -464,16 +465,23 @@
       const quote = activeQuote;
       document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Η εκτίμησή σου</div><h2>${euro(quote.total)}</h2><p style="margin:5px 0 0;color:var(--muted);font-size:13px">${quote.duration} ώρες · ${quote.passengers} άτομα · ${esc(quote.pickup)}</p></div><button class="close" id="close-modal">×</button></div><div class="breakdown">${quote.breakdown.map(row => `<div class="breakdown-row"><span>${row[0]}</span><strong>${euro(row[1])}</strong></div>`).join("")}<div class="breakdown-row breakdown-total"><span>Προκαταβολή</span><strong>${euro(quote.deposit)}</strong></div></div><button class="button" style="width:100%" id="quote-book">Συνέχισε στην κράτηση →</button></div></div>`;
       document.getElementById("close-modal").addEventListener("click", closeModal);
-      document.getElementById("quote-book").addEventListener("click", () => { const custom = { id: "custom-" + Date.now(), title: "Custom διαδρομή · " + quote.pickup, category: "Custom", location: quote.pickup, hours: quote.duration, price: quote.total, rating: "—", reviews: 0, visual: "visual-mani", description: "" }; closeModal(); openBookingModal(custom); });
+      document.getElementById("quote-book").addEventListener("click", () => { const custom = { id: "custom-" + Date.now(), title: "Custom διαδρομή · " + quote.pickup, category: "Custom", location: quote.pickup, hours: quote.duration, price: quote.total, rating: "—", reviews: 0, visual: "visual-mani", description: "", bookingDate: quote.date, bookingTime: quote.time, bookingPassengers: quote.passengers }; closeModal(); openBookingModal(custom); });
     }
 
     function openBookingModal(item) {
       openBooking = item;
-      document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Τελικό βήμα</div><h2>${esc(item.title)}</h2></div><button class="close" id="close-modal">×</button></div><div class="booking-summary">${dataTag("▣", "15 Σεπτεμβρίου 2026 · 09:30")}${dataTag("♙", "2 επιβάτες")}<div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:11px"><span>Σύνολο</span><strong>${euro(item.price)}</strong></div></div><button class="button" style="width:100%;margin-top:20px" id="confirm-booking">Επιβεβαίωσε με προκαταβολή</button><button class="text-button" style="width:100%;justify-content:center;margin-top:13px;color:var(--muted)" id="cancel-booking">Πίσω</button></div></div>`;
+      offlinePaymentPlan = "deposit";
+      const date = item.bookingDate || "2026-09-15";
+      const dateLabel = new Intl.DateTimeFormat("el-GR", { day: "numeric", month: "long", year: "numeric" }).format(new Date(date + "T12:00:00"));
+      const time = item.bookingTime || "09:30";
+      const passengers = item.bookingPassengers || 2;
+      document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Τελικό βήμα</div><h2>${esc(item.title)}</h2></div><button class="close" id="close-modal">×</button></div><div class="booking-summary">${dataTag("▣", dateLabel + " · " + time)}${dataTag("♙", passengers + " επιβάτες")}${dataTag("⌖", esc(item.location || "Ξενοδοχείο Ακτή, Αθήνα"))}<div style="display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:11px"><span>Σύνολο</span><strong>${euro(item.price)}</strong></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:13px"><button class="mini-button approve" id="offline-deposit">Προκαταβολή 30%<br><small>${euro(Math.round(item.price * .3))} τώρα</small></button><button class="mini-button" id="offline-full">Πλήρης εξόφληση<br><small>${euro(item.price)} τώρα</small></button></div><button class="button" style="width:100%;margin-top:20px" id="confirm-booking">Επιβεβαίωσε με προκαταβολή</button><button class="text-button" style="width:100%;justify-content:center;margin-top:13px;color:var(--muted)" id="cancel-booking">Πίσω</button></div></div>`;
       document.getElementById("close-modal").addEventListener("click", closeModal);
       document.getElementById("cancel-booking").addEventListener("click", closeModal);
+      document.getElementById("offline-deposit").addEventListener("click", () => { offlinePaymentPlan = "deposit"; document.getElementById("offline-deposit").className = "mini-button approve"; document.getElementById("offline-full").className = "mini-button"; document.getElementById("confirm-booking").textContent = "Επιβεβαίωσε με προκαταβολή"; });
+      document.getElementById("offline-full").addEventListener("click", () => { offlinePaymentPlan = "full"; document.getElementById("offline-full").className = "mini-button approve"; document.getElementById("offline-deposit").className = "mini-button"; document.getElementById("confirm-booking").textContent = "Εξόφλησε και επιβεβαίωσε"; });
       document.getElementById("confirm-booking").addEventListener("click", () => {
-        const newBooking = { id: "bk-" + Date.now(), title: item.title, date: "15 Σεπτεμβρίου 2026", pickup: item.location || "Ξενοδοχείο Ακτή, Αθήνα", passengers: 2, total: item.price, paid: Math.round(item.price * .3), status: "confirmed", driver: "Αναμένεται ανάθεση", vehicle: "Θα ενημερωθεί σύντομα" };
+        const newBooking = { id: "bk-" + Date.now(), title: item.title, date: dateLabel, pickup: item.location || "Ξενοδοχείο Ακτή, Αθήνα", passengers, total: item.price, paid: offlinePaymentPlan === "full" ? item.price : Math.round(item.price * .3), status: "confirmed", driver: "Αναμένεται ανάθεση", vehicle: "Θα ενημερωθεί σύντομα" };
         bookings.unshift(newBooking); save();
         document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop"><div class="modal"><div class="notice">✓ <span>Η κράτησή σου καταχωρήθηκε. Θα βρεις όλες τις λεπτομέρειες στην ενότητα «Οι κρατήσεις μου».</span></div><button class="button" style="width:100%;margin-top:20px" id="view-bookings">Δες τις κρατήσεις →</button></div></div>`;
         document.getElementById("view-bookings").addEventListener("click", () => { closeModal(); navigate("/bookings"); });
