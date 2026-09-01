@@ -28,6 +28,7 @@ import {
   experiencesTable,
 } from "@workspace/db";
 import { calculateQuote, formatDate } from "../lib/travel-data";
+import { requireAuth, requireRole } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -115,7 +116,7 @@ router.post("/quotes", async (req, res): Promise<void> => {
   res.json(CreateQuoteResponse.parse(quote));
 });
 
-router.get("/bookings", async (req, res): Promise<void> => {
+router.get("/bookings", requireAuth, async (req, res): Promise<void> => {
   const parsed = ListBookingsQueryParams.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -125,12 +126,12 @@ router.get("/bookings", async (req, res): Promise<void> => {
   const bookings = await db
     .select()
     .from(bookingsTable)
-    .where(eq(bookingsTable.customerId, parsed.data.customerId))
+    .where(eq(bookingsTable.customerId, req.userId!))
     .orderBy(asc(bookingsTable.scheduledDate));
   res.json(ListBookingsResponse.parse(bookings.map(bookingResponse)));
 });
 
-router.post("/bookings", async (req, res): Promise<void> => {
+router.post("/bookings", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateBookingBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -143,7 +144,7 @@ router.post("/bookings", async (req, res): Promise<void> => {
     .insert(bookingsTable)
     .values({
       id: `booking-${Date.now()}`,
-      customerId: data.customerId,
+       customerId: req.userId!,
       experienceId: data.experienceId ?? null,
       title: data.title,
       scheduledDate: formatDate(data.date),
@@ -160,7 +161,7 @@ router.post("/bookings", async (req, res): Promise<void> => {
   res.status(201).json(CreateBookingResponse.parse(bookingResponse(booking)));
 });
 
-router.get("/driver/jobs", async (_req, res): Promise<void> => {
+router.get("/driver/jobs", requireRole("driver"), async (_req, res): Promise<void> => {
   const jobs = await db
     .select()
     .from(driverJobsTable)
@@ -169,7 +170,7 @@ router.get("/driver/jobs", async (_req, res): Promise<void> => {
   res.json(ListDriverJobsResponse.parse(jobs.map(driverJobResponse)));
 });
 
-router.post("/driver/jobs/:id/claim", async (req, res): Promise<void> => {
+router.post("/driver/jobs/:id/claim", requireRole("driver"), async (req, res): Promise<void> => {
   const params = ClaimDriverJobParams.safeParse(req.params);
   const body = ClaimDriverJobBody.safeParse(req.body);
   if (!params.success) {
@@ -185,7 +186,7 @@ router.post("/driver/jobs/:id/claim", async (req, res): Promise<void> => {
     .update(driverJobsTable)
     .set({
       status: "claimed",
-      claimedDriverId: body.data.driverId,
+       claimedDriverId: req.userId!,
       claimedVehicle: body.data.vehicle,
     })
     .where(and(eq(driverJobsTable.id, params.data.id), eq(driverJobsTable.status, "open")))
@@ -199,11 +200,11 @@ router.post("/driver/jobs/:id/claim", async (req, res): Promise<void> => {
   res.json(ClaimDriverJobResponse.parse(driverJobResponse(job)));
 });
 
-router.get("/dashboard/summary", async (_req, res): Promise<void> => {
+router.get("/dashboard/summary", requireAuth, async (req, res): Promise<void> => {
   const bookings = await db
     .select()
     .from(bookingsTable)
-    .where(eq(bookingsTable.customerId, "demo-customer"))
+    .where(eq(bookingsTable.customerId, req.userId!))
     .orderBy(asc(bookingsTable.scheduledDate));
   const futureBookings = bookings.filter((booking) => booking.status !== "cancelled");
   const totalSpent = bookings.reduce((sum, booking) => sum + booking.paid, 0);
@@ -217,7 +218,7 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   res.json(GetDashboardSummaryResponse.parse(summary));
 });
 
-router.get("/admin/drivers", async (_req, res): Promise<void> => {
+router.get("/admin/drivers", requireRole("operator"), async (_req, res): Promise<void> => {
   const drivers = await db
     .select()
     .from(driversTable)
@@ -225,7 +226,7 @@ router.get("/admin/drivers", async (_req, res): Promise<void> => {
   res.json(ListAdminDriversResponse.parse(drivers.map(driverResponse)));
 });
 
-router.patch("/admin/drivers/:id/review", async (req, res): Promise<void> => {
+router.patch("/admin/drivers/:id/review", requireRole("operator"), async (req, res): Promise<void> => {
   const params = ReviewDriverParams.safeParse(req.params);
   const body = ReviewDriverBody.safeParse(req.body);
   if (!params.success) {

@@ -1,7 +1,9 @@
 import { type ReactNode, useState } from 'react';
 import { Link, useLocation } from 'wouter';
+import { useAuth, useClerk, useUser } from '@clerk/react';
 import { Compass, LayoutDashboard, CalendarDays, CarFront, ShieldCheck, Menu, X, ArrowUpRight, MapPin, Clock3, Users, Star, AlertCircle, CheckCircle2, LoaderCircle } from 'lucide-react';
 import { useHealthCheck, getHealthCheckQueryKey } from '@workspace/api-client-react';
+import { roleLabel, useCurrentUser } from '@/lib/auth';
 
 export function formatEuro(value: number) {
   return new Intl.NumberFormat('el-GR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
@@ -30,24 +32,34 @@ export function EmptyState({ title, detail, action }: { title: string; detail: s
   return <div className="rounded-2xl border border-dashed border-border bg-card/50 p-10 text-center" data-testid="state-empty"><Compass className="mx-auto mb-3 text-accent" size={30} /><h3 className="font-display text-2xl">{title}</h3><p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted-foreground">{detail}</p>{action && <div className="mt-5">{action}</div>}</div>;
 }
 
-const navItems = [
-  { href: '/', label: 'Ανακάλυψη', icon: Compass },
-  { href: '/bookings', label: 'Οι κρατήσεις μου', icon: CalendarDays },
-  { href: '/driver', label: 'Πίνακας οδηγού', icon: CarFront },
-  { href: '/admin', label: 'Έλεγχος συνεργατών', icon: ShieldCheck },
-];
-
 export function AppShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { isSignedIn } = useAuth();
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  const profile = useCurrentUser(Boolean(isSignedIn));
   const health = useHealthCheck({ query: { queryKey: getHealthCheckQueryKey(), staleTime: 60_000 } });
+  const role = profile.data?.role;
+  const navItems = [
+    { href: '/', label: 'Ανακάλυψη', icon: Compass },
+    ...(role === 'traveler' ? [{ href: '/bookings', label: 'Οι κρατήσεις μου', icon: CalendarDays }] : []),
+    ...(role === 'driver' ? [{ href: '/driver', label: 'Πίνακας οδηγού', icon: CarFront }] : []),
+    ...(role === 'operator' ? [{ href: '/admin', label: 'Έλεγχος συνεργατών', icon: ShieldCheck }] : []),
+  ];
+  const initials = user
+    ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase() || 'A'
+    : 'A';
+  const displayName = user?.firstName
+    ? `${user.firstName} ${user.lastName?.[0] ? `${user.lastName[0]}.` : ''}`
+    : 'Επισκέπτης';
   return <div className="noise min-h-[100dvh] bg-background text-foreground">
     <aside className={`fixed inset-y-0 left-0 z-40 w-[272px] transform bg-primary px-6 py-7 text-primary-foreground shadow-2xl transition-transform md:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="flex items-center justify-between"><Link href="/" data-testid="link-brand" className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-accent text-primary"><Compass size={22} /></span><span><strong className="font-display text-[22px]">Aperion</strong><small className="ml-1 block text-[9px] font-bold uppercase tracking-[.23em] text-primary-foreground/55">Travel days</small></span></Link><button data-testid="button-close-menu" className="md:hidden" onClick={() => setMobileOpen(false)}><X size={20} /></button></div>
-      <div className="mt-12 space-y-2">{navItems.map(({ href, label, icon: Icon }) => <Link key={href} href={href} data-testid={`link-nav-${label}`} onClick={() => setMobileOpen(false)} className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold ${location === href ? 'bg-primary-foreground/14 text-accent' : 'text-primary-foreground/70 hover:bg-primary-foreground/8 hover:text-primary-foreground'}`}><Icon size={18} strokeWidth={1.8} /><span>{label}</span>{href === '/bookings' && <span className="ml-auto rounded-full bg-accent/20 px-2 py-0.5 font-mono-ui text-[10px] text-accent">02</span>}</Link>)}</div>
+       <div className="mt-12 space-y-2">{navItems.map(({ href, label, icon: Icon }) => <Link key={href} href={href} data-testid={`link-nav-${label}`} onClick={() => setMobileOpen(false)} className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-semibold ${location === href ? 'bg-primary-foreground/14 text-accent' : 'text-primary-foreground/70 hover:bg-primary-foreground/8 hover:text-primary-foreground'}`}><Icon size={18} strokeWidth={1.8} /><span>{label}</span>{href === '/bookings' && <span className="ml-auto rounded-full bg-accent/20 px-2 py-0.5 font-mono-ui text-[10px] text-accent">—</span>}</Link>)}</div>
       <div className="absolute bottom-7 left-6 right-6 rounded-2xl border border-primary-foreground/10 bg-primary-foreground/6 p-4"><div className="mb-3 flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${health.isError ? 'bg-[#e6a29a]' : 'bg-[#8fd1af]'}`} /><span className="font-mono-ui text-[10px] uppercase tracking-wider text-primary-foreground/55">Σύστημα {health.isError ? 'σε έλεγχο' : 'ενεργό'}</span></div><p className="text-xs leading-5 text-primary-foreground/55">Μετακινήσεις με ρυθμό, φροντίδα και τοπική γνώση.</p></div>
     </aside>
-    <div className="md:pl-[272px]"><header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-border/80 bg-background/90 px-5 backdrop-blur-md md:px-10"><button data-testid="button-open-menu" className="rounded-lg p-2 hover:bg-muted md:hidden" onClick={() => setMobileOpen(true)}><Menu size={21} /></button><div className="hidden md:block"><span className="font-mono-ui text-[10px] uppercase tracking-[.22em] text-muted-foreground">Νησιά, πόλεις, ιστορίες</span></div><div className="flex items-center gap-3"><div className="hidden text-right sm:block"><p className="text-xs font-bold">Μαρίνα Κ.</p><p className="text-[10px] text-muted-foreground">Ταξιδιώτης</p></div><div data-testid="avatar-customer" className="grid h-9 w-9 place-items-center rounded-full bg-[#f2bf91] font-display text-sm text-primary">ΜΚ</div></div></header><main>{children}</main></div>
+     <div className="md:pl-[272px]"><header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b border-border/80 bg-background/90 px-5 backdrop-blur-md md:px-10"><button data-testid="button-open-menu" className="rounded-lg p-2 hover:bg-muted md:hidden" onClick={() => setMobileOpen(true)}><Menu size={21} /></button><div className="hidden md:block"><span className="font-mono-ui text-[10px] uppercase tracking-[.22em] text-muted-foreground">Νησιά, πόλεις, ιστορίες</span></div><div className="flex items-center gap-3">{isSignedIn ? <><div className="hidden text-right sm:block"><p className="text-xs font-bold">{displayName}</p><p className="text-[10px] text-muted-foreground">{roleLabel(role)}</p></div><button type="button" onClick={() => signOut({ redirectUrl: '/' })} className="rounded-full bg-[#f2bf91] px-3 py-2 text-[10px] font-bold text-primary hover:bg-accent" data-testid="button-sign-out">Έξοδος</button><div data-testid="avatar-customer" className="grid h-9 w-9 place-items-center rounded-full bg-[#f2bf91] font-display text-sm text-primary">{initials}</div></> : <><Link href="/sign-in" data-testid="link-sign-in" className="text-xs font-bold text-primary hover:text-accent">Σύνδεση</Link><Link href="/sign-up" data-testid="link-sign-up" className="rounded-xl bg-primary px-3.5 py-2 text-xs font-bold text-primary-foreground hover:bg-[#285b6b]">Δημιούργησε λογαριασμό</Link></>}</div></header><main>{children}</main></div>
   </div>;
 }
 

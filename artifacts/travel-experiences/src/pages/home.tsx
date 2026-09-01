@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { Link } from 'wouter';
+import { useAuth, useUser } from '@clerk/react';
 import { ArrowRight, ArrowUpRight, CalendarDays, ChevronRight, Clock3, SlidersHorizontal, Star, Users } from 'lucide-react';
 import { useCreateBooking, useCreateQuote, useGetExperience, useListExperiences, getGetExperienceQueryKey, getListExperiencesQueryKey, getListBookingsQueryKey, getGetDashboardSummaryQueryKey } from '@workspace/api-client-react';
 import type { Experience, Quote, QuoteInput } from '@workspace/api-client-react';
@@ -63,6 +64,8 @@ function QuotePanel({ onQuote }: { onQuote: (quote: Quote, input: QuoteInput) =>
 }
 
 export default function Home() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
   const { data: experiences, isLoading, isError, refetch } = useListExperiences({ query: { queryKey: getListExperiencesQueryKey(), staleTime: 300_000 } });
   const createBooking = useCreateBooking();
   const queryClient = useQueryClient();
@@ -76,17 +79,21 @@ export default function Home() {
   const visible = (experiences ?? []).filter((e) => category === 'Όλα' || e.category === category);
 
   const bookExperience = (experience: Experience) => {
+    if (!isLoaded || !isSignedIn) {
+      window.location.assign(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/sign-in`);
+      return;
+    }
     setSelected({ ...experience, bookingDate: '2026-09-15', bookingTime: '09:30', bookingPassengers: 2, bookingPickup: 'Ξενοδοχείο Ακτή, Αθήνα' });
     setBookingDone(false);
     setPaymentPlan('deposit');
   };
 
   const submitBooking = () => {
-    if (!selected) return;
+    if (!selected || !user) return;
     const active = selectedDetails.data ?? selected;
     createBooking.mutate({
       data: {
-        customerId: 'demo-customer',
+        customerId: user.id,
         experienceId: active.id || undefined,
         title: active.title,
         date: selected.bookingDate,
@@ -98,7 +105,7 @@ export default function Home() {
     }, {
       onSuccess: () => {
         setBookingDone(true);
-        queryClient.invalidateQueries({ queryKey: getListBookingsQueryKey({ customerId: 'demo-customer' }) });
+         queryClient.invalidateQueries({ queryKey: getListBookingsQueryKey({ customerId: user.id }) });
         queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       },
     });
@@ -125,7 +132,7 @@ export default function Home() {
         </div>
       </section>
 
-      {quote && <div className="fixed inset-0 z-50 grid place-items-center bg-primary/50 p-5 backdrop-blur-sm"><div className="w-full max-w-lg rounded-3xl bg-card p-7 shadow-2xl" data-testid="dialog-quote-result"><div className="flex items-start justify-between"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Η εκτίμησή σου</p><h2 className="mt-2 font-display text-4xl text-primary">{formatEuro(quote.result.total)}</h2><p className="mt-1 text-sm text-muted-foreground">{quote.result.distanceKm} χλμ · {quote.result.durationHours} ώρες · {quote.input.passengers} άτομα</p></div><button data-testid="button-close-quote" onClick={() => setQuote(null)} className="text-muted-foreground hover:text-primary">×</button></div><div className="mt-6 space-y-3 border-y border-border py-5">{quote.result.breakdown.map((line) => <div key={line.label} className="flex justify-between text-sm"><span className="text-muted-foreground">{line.label}</span><span className="font-semibold">{formatEuro(line.amount)}</span></div>)}<div className="flex justify-between pt-2 text-sm font-bold text-primary"><span>Προκαταβολή</span><span>{formatEuro(quote.result.deposit)}</span></div></div><ActionButton data-testid="button-quote-book" onClick={() => { setQuote(null); setSelected({ id: '', title: `Custom διαδρομή · ${quote.input.pickup}`, location: quote.input.pickup, durationHours: quote.result.durationHours, priceFrom: quote.result.total, category: 'Custom', description: '', imageUrl: '', highlights: [], rating: 0, reviewCount: 0, bookingDate: quote.input.date, bookingTime: quote.input.startTime, bookingPassengers: quote.input.passengers, bookingPickup: quote.input.pickup }); setBookingDone(false); setPaymentPlan('deposit'); }}>Συνέχισε στην κράτηση <ArrowRight size={16} /></ActionButton></div></div>}
+       {quote && <div className="fixed inset-0 z-50 grid place-items-center bg-primary/50 p-5 backdrop-blur-sm"><div className="w-full max-w-lg rounded-3xl bg-card p-7 shadow-2xl" data-testid="dialog-quote-result"><div className="flex items-start justify-between"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Η εκτίμησή σου</p><h2 className="mt-2 font-display text-4xl text-primary">{formatEuro(quote.result.total)}</h2><p className="mt-1 text-sm text-muted-foreground">{quote.result.distanceKm} χλμ · {quote.result.durationHours} ώρες · {quote.input.passengers} άτομα</p></div><button data-testid="button-close-quote" onClick={() => setQuote(null)} className="text-muted-foreground hover:text-primary">×</button></div><div className="mt-6 space-y-3 border-y border-border py-5">{quote.result.breakdown.map((line) => <div key={line.label} className="flex justify-between text-sm"><span className="text-muted-foreground">{line.label}</span><span className="font-semibold">{formatEuro(line.amount)}</span></div>)}<div className="flex justify-between pt-2 text-sm font-bold text-primary"><span>Προκαταβολή</span><span>{formatEuro(quote.result.deposit)}</span></div></div><ActionButton data-testid="button-quote-book" onClick={() => { if (!isSignedIn) { window.location.assign(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/sign-in`); return; } setQuote(null); setSelected({ id: '', title: `Custom διαδρομή · ${quote.input.pickup}`, location: quote.input.pickup, durationHours: quote.result.durationHours, priceFrom: quote.result.total, category: 'Custom', description: '', imageUrl: '', highlights: [], rating: 0, reviewCount: 0, bookingDate: quote.input.date, bookingTime: quote.input.startTime, bookingPassengers: quote.input.passengers, bookingPickup: quote.input.pickup }); setBookingDone(false); setPaymentPlan('deposit'); }}>{isSignedIn ? 'Συνέχισε στην κράτηση' : 'Συνδέσου για κράτηση'} <ArrowRight size={16} /></ActionButton></div></div>}
 
       {selected && <div className="fixed inset-0 z-50 grid place-items-center bg-primary/50 p-5 backdrop-blur-sm"><div className="w-full max-w-md rounded-3xl bg-card p-7 shadow-2xl" data-testid="dialog-booking"><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Τελικό βήμα</p><h2 className="mt-2 font-display text-3xl text-primary">{selected.title}</h2>{bookingDone ? <div className="mt-6"><SuccessNotice>Η κράτησή σου καταχωρήθηκε με τα στοιχεία της διαδρομής. Θα βρεις όλες τις λεπτομέρειες στην ενότητα «Οι κρατήσεις μου».</SuccessNotice><Link href="/bookings" data-testid="link-view-bookings" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary">Δες τις κρατήσεις <ChevronRight size={15} /></Link></div> : <><div className="mt-5 space-y-3 rounded-2xl bg-muted/60 p-4 text-sm"><DataTag icon={CalendarDays}>{formatBookingDate(selected.bookingDate)} · {selected.bookingTime}</DataTag><DataTag icon={Users}>{selected.bookingPassengers} επιβάτες</DataTag><DataTag icon={Clock3}>{selected.bookingPickup}</DataTag><div className="flex justify-between border-t border-border pt-3"><span className="text-muted-foreground">Σύνολο</span><strong>{formatEuro(selected.priceFrom)}</strong></div></div><div className="mt-4 grid grid-cols-2 gap-2"><button type="button" data-testid="button-payment-deposit" onClick={() => setPaymentPlan('deposit')} className={`rounded-xl border p-3 text-left text-xs ${paymentPlan === 'deposit' ? 'border-accent bg-accent/10 text-primary' : 'border-border text-muted-foreground'}`}><span className="block font-bold">Προκαταβολή 30%</span><span>{formatEuro(Math.round(selected.priceFrom * .3))} τώρα</span></button><button type="button" data-testid="button-payment-full" onClick={() => setPaymentPlan('full')} className={`rounded-xl border p-3 text-left text-xs ${paymentPlan === 'full' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}><span className="block font-bold">Πλήρης εξόφληση</span><span>{formatEuro(selected.priceFrom)} τώρα</span></button></div><ActionButton data-testid="button-confirm-booking" onClick={submitBooking} loading={createBooking.isPending} className="mt-6 w-full">{paymentPlan === 'full' ? 'Εξόφλησε και επιβεβαίωσε' : 'Επιβεβαίωσε με προκαταβολή'}</ActionButton>{createBooking.isError && <p className="mt-3 text-xs text-[#b24d42]" data-testid="text-booking-error">Η κράτηση δεν ολοκληρώθηκε. Προσπάθησε ξανά.</p>}<button data-testid="button-cancel-booking" onClick={() => setSelected(null)} className="mt-3 w-full py-2 text-sm text-muted-foreground hover:text-primary">Πίσω</button></>}</div></div>}
     </div>

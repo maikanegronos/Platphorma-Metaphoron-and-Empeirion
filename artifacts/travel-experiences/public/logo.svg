@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Aperion Travel Days">
+  <rect width="120" height="120" rx="30" fill="#f2a06f"/>
+  <path d="M60 24c-16.6 0-30 13.4-30 30 0 20.8 30 42 30 42s30-21.2 30-42c0-16.6-13.4-30-30-30Z" fill="#123f50"/>
+  <circle cx="60" cy="54" r="10" fill="#f8f1e5"/>
+  <path d="M60 42v24M48 54h24" stroke="#f2a06f" stroke-width="4" stroke-linecap="round"/>
+</svg>
