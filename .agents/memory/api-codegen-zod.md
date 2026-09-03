@@ -3,8 +3,8 @@ name: API codegen and Zod compatibility
 description: Compatibility constraint between the workspace OpenAPI generator and its installed Zod runtime.
 ---
 
-The installed Orval/Zod combination emits `zod.int()` for OpenAPI integer schemas, but the workspace's Zod runtime does not expose that API. Use numeric schemas at the contract boundary and enforce integer semantics in application logic when needed.
+The installed Orval/Zod combination emits `zod.int()` for OpenAPI integer schemas and `zod.email()` for `format: email`, but the workspace's Zod runtime does not expose those APIs. Use numeric schemas at the contract boundary, omit email format when it is not needed for client validation, and enforce integer semantics in application logic when needed.
 
-**Why:** Code generation succeeds but the library typecheck fails after generation if integer schemas are used directly.
+**Why:** Code generation succeeds but the library typecheck fails after generation if unsupported integer or email helpers are emitted.
 
-**How to apply:** Check the generated Zod output after OpenAPI changes and run the API-spec codegen command before relying on new hooks or server validators.
+**How to apply:** Check generated Zod output after OpenAPI changes and run the API-spec codegen command before relying on new hooks or server validators.

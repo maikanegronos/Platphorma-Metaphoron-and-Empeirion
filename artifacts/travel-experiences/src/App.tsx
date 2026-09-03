@@ -88,6 +88,38 @@ const clerkAppearance = {
   },
 };
 
+const greekLocalization = {
+  locale: "el-GR",
+  socialButtonsBlockButton: "Συνέχεια με {{provider|titleize}}",
+  dividerText: "ή",
+  formFieldLabel__emailAddress: "Email",
+  formFieldLabel__password: "Κωδικός",
+  formFieldInputPlaceholder__emailAddress: "Το email σου",
+  formFieldInputPlaceholder__password: "Ο κωδικός σου",
+  formButtonPrimary: "Συνέχεια",
+  formFieldAction__forgotPassword: "Ξέχασες τον κωδικό σου;",
+  signIn: {
+    start: {
+      title: "Καλώς ήρθες ξανά",
+      subtitle: "Συνδέσου για να συνεχίσεις στο Aperion",
+      actionText: "Δεν έχεις λογαριασμό;",
+      actionLink: "Εγγραφή",
+    },
+    password: {
+      title: "Πληκτρολόγησε τον κωδικό σου",
+      subtitle: "Συνέχισε με τον κωδικό του λογαριασμού σου",
+    },
+  },
+  signUp: {
+    start: {
+      title: "Δημιούργησε λογαριασμό",
+      subtitle: "Ξεκίνα να σχεδιάζεις τις επόμενες μέρες σου",
+      actionText: "Έχεις ήδη λογαριασμό;",
+      actionLink: "Σύνδεση",
+    },
+  },
+};
+
 function AuthLoading({ label = "Φορτώνουμε το Aperion…" }: { label?: string }) {
   return (
     <div className="min-h-[100dvh] bg-background px-5 py-12 md:px-10">
@@ -232,20 +264,7 @@ function ClerkProviderWithRoutes() {
         appearance={clerkAppearance}
         signInUrl={`${basePath}/sign-in`}
         signUpUrl={`${basePath}/sign-up`}
-        localization={{
-          signIn: {
-            start: {
-              title: "Καλώς ήρθες ξανά",
-              subtitle: "Συνδέσου για να συνεχίσεις στο Aperion",
-            },
-          },
-          signUp: {
-            start: {
-              title: "Δημιούργησε λογαριασμό",
-              subtitle: "Ξεκίνα να σχεδιάζεις τις επόμενες μέρες σου",
-            },
-          },
-        }}
+        localization={greekLocalization}
         routerPush={(to) => setLocation(stripBase(to))}
         routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
       >

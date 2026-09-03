@@ -68,6 +68,12 @@
     .profile-name { font-size: 12px; font-weight: 800; }
     .profile-role { color: var(--muted); font-size: 10px; }
     .avatar { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--peach); color: var(--ink); font: 15px var(--display); }
+    .auth-actions { display: flex; align-items: center; gap: 12px; }
+    .auth-note { color: var(--muted); font: 10px var(--mono); letter-spacing: .05em; }
+    .auth-pill { border: 0; border-radius: 999px; padding: 9px 13px; background: var(--ink); color: var(--cream); font-size: 11px; font-weight: 800; }
+    .auth-pill:hover { background: var(--ink-soft); }
+    .auth-logout { border: 0; background: transparent; color: var(--muted); font-size: 11px; font-weight: 800; }
+    .auth-logout:hover { color: var(--coral-dark); }
     .mobile-menu { display: none; border: 0; background: transparent; color: var(--ink); font-size: 23px; }
     .page { max-width: 1280px; margin: 0 auto; padding: 54px 40px; }
     .hero { padding: 78px 40px 86px; background: radial-gradient(circle at 75% 15%, rgba(242,120,80,.24), transparent 30%), linear-gradient(135deg, #fffdfa, #eee5da); }
@@ -227,6 +233,14 @@
     .booking-summary { display: grid; gap: 10px; margin-top: 20px; padding: 16px; border-radius: 15px; background: #f0ebe4; color: var(--muted); font-size: 13px; }
     .booking-summary strong { color: var(--ink); }
     .notice { display: flex; gap: 10px; padding: 14px; border: 1px solid #abd7bf; border-radius: 14px; background: #eef9f2; color: var(--green-ink); font-size: 13px; }
+    .auth-modal-copy { margin-top: 10px; color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .auth-form { display: grid; gap: 14px; margin-top: 20px; }
+    .auth-form input { width: 100%; min-height: 43px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 11px; outline: 0; background: var(--cream); color: var(--ink); font-size: 13px; }
+    .auth-form input:focus { border-color: var(--coral); box-shadow: 0 0 0 3px rgba(242,120,80,.15); }
+    .role-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .role-option { padding: 12px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); font-size: 11px; font-weight: 800; }
+    .role-option.active { border-color: var(--coral); background: rgba(242,120,80,.12); }
+    .auth-error { color: var(--red-ink); font-size: 12px; font-weight: 800; }
     .toast { position: fixed; right: 22px; bottom: 22px; z-index: 80; max-width: 340px; padding: 14px 17px; border-radius: 13px; background: var(--ink); color: var(--cream); box-shadow: var(--shadow); font-size: 13px; }
     .download-button { position: fixed; right: 20px; bottom: 20px; z-index: 15; display: inline-flex; align-items: center; gap: 8px; padding: 11px 15px; border: 1px solid rgba(23,63,77,.14); border-radius: 999px; background: rgba(255,253,250,.92); color: var(--ink); box-shadow: 0 8px 22px rgba(23,63,77,.12); font-size: 11px; font-weight: 800; }
     .download-button:hover { transform: translateY(-2px); border-color: var(--coral); }
@@ -279,11 +293,11 @@
         <span class="brand-mark">◉</span>
         <span><span class="brand-name">Aperion</span><span class="brand-sub">Travel days</span></span>
       </a>
-      <nav class="nav" aria-label="Κύρια πλοήγηση">
+       <nav class="nav" aria-label="Κύρια πλοήγηση">
         <button data-route="/" class="active"><span class="nav-icon">◎</span><span>Ανακάλυψη</span></button>
-        <button data-route="/bookings"><span class="nav-icon">▣</span><span>Οι κρατήσεις μου</span><span class="nav-count" id="booking-count">02</span></button>
-        <button data-route="/driver"><span class="nav-icon">▱</span><span>Πίνακας οδηγού</span></button>
-        <button data-route="/admin"><span class="nav-icon">♢</span><span>Έλεγχος συνεργατών</span></button>
+         <button data-route="/bookings" data-role="traveler"><span class="nav-icon">▣</span><span>Οι κρατήσεις μου</span><span class="nav-count" id="booking-count">02</span></button>
+         <button data-route="/driver" data-role="driver"><span class="nav-icon">▱</span><span>Πίνακας οδηγού</span></button>
+         <button data-route="/admin" data-role="operator"><span class="nav-icon">♢</span><span>Έλεγχος συνεργατών</span></button>
       </nav>
       <div class="system-card">
         <div class="system-line"><span class="system-dot"></span> Σύστημα ενεργό</div>
@@ -295,7 +309,7 @@
       <header class="topbar">
         <button class="mobile-menu" id="menu-button" aria-label="Άνοιγμα μενού">☰</button>
         <span class="topline">Νησιά, πόλεις, ιστορίες</span>
-        <div class="profile"><div><div class="profile-name">Μαρίνα Κ.</div><div class="profile-role">Ταξιδιώτης</div></div><span class="avatar">ΜΚ</span></div>
+         <div class="auth-actions" id="profile-root"></div>
       </header>
       <main id="view"></main>
     </div>
@@ -333,6 +347,7 @@
     let openBooking = null;
     let expandedBooking = null;
     let offlinePaymentPlan = "deposit";
+    let offlineUser = JSON.parse(localStorage.getItem("aperion-offline-user") || "null");
     let toastTimer;
 
     const euro = value => new Intl.NumberFormat("el-GR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value);
@@ -342,9 +357,56 @@
       document.getElementById("booking-count").textContent = String(bookings.filter(b => b.status !== "completed" && b.status !== "cancelled").length).padStart(2, "0");
     };
     const statusLabel = status => ({ confirmed: "Επιβεβαιωμένη", pending: "Σε αναμονή", open: "Ανοιχτή", claimed: "Ανατέθηκε", approved: "Εγκεκριμένος", rejected: "Απορρίφθηκε" }[status] || status);
+    const roleLabel = role => ({ traveler: "Ταξιδιώτης", driver: "Οδηγός", operator: "Operator" }[role] || "Επισκέπτης");
     const statusPill = status => `<span class="status ${status}">${statusLabel(status)}</span>`;
     const dataTag = (icon, text) => `<span>${icon} ${text}</span>`;
     const esc = text => String(text).replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char]));
+
+    function updateChrome() {
+      const root = document.getElementById("profile-root");
+      root.innerHTML = offlineUser
+        ? `<div class="profile"><div><div class="profile-name">${esc(offlineUser.name)}</div><div class="profile-role">${roleLabel(offlineUser.role)}</div></div><button class="auth-logout" id="sign-out-button">Αποσύνδεση</button><span class="avatar">${esc(offlineUser.initials)}</span></div>`
+        : `<span class="auth-note">Offline demo · mock login</span><button class="auth-pill" id="sign-in-button">Σύνδεση / εγγραφή</button>`;
+      root.querySelector("#sign-in-button")?.addEventListener("click", () => showAuthModal());
+      root.querySelector("#sign-out-button")?.addEventListener("click", () => {
+        offlineUser = null;
+        localStorage.removeItem("aperion-offline-user");
+        showToast("Αποσυνδέθηκες από την offline έκδοση.");
+        navigate("/");
+        updateChrome();
+      });
+      document.querySelectorAll("[data-role]").forEach(item => {
+        item.classList.toggle("hidden", Boolean(offlineUser && item.dataset.role !== offlineUser.role));
+      });
+    }
+
+    function showAuthModal(targetRoute = "/") {
+      let selectedRole = offlineUser?.role || "traveler";
+      document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop"><div class="modal"><div class="modal-head"><div><div class="eyebrow">Offline demo</div><h2>Ο δικός σου λογαριασμός.</h2></div><button class="close" id="close-auth">×</button></div><p class="auth-modal-copy">Η offline έκδοση χρησιμοποιεί mock login και αποθηκεύει τον λογαριασμό μόνο σε αυτόν τον browser. Η πραγματική σύνδεση με email ή Google λειτουργεί στην online εφαρμογή.</p><form class="auth-form" id="auth-form"><label class="field"><span>Όνομα</span><input id="auth-name" required value="${esc(offlineUser?.name || "")}" placeholder="π.χ. Μαρίνα Κ." /></label><label class="field"><span>Email</span><input id="auth-email" type="email" required value="${esc(offlineUser?.email || "")}" placeholder="marina@example.com" /></label><div><span class="field-label" style="color:var(--muted)">Τύπος λογαριασμού</span><div class="role-options">${Object.entries({ traveler: "Ταξιδιώτης", driver: "Οδηγός", operator: "Operator" }).map(([role, label]) => `<button type="button" class="role-option ${selectedRole === role ? "active" : ""}" data-select-role="${role}">${label}</button>`).join("")}</div></div><p class="auth-error hidden" id="auth-error"></p><button class="button" type="submit">Συνέχεια ως <span id="selected-role-label">${roleLabel(selectedRole)}</span> →</button></form></div></div>`;
+      document.querySelectorAll("[data-select-role]").forEach(button => button.addEventListener("click", () => {
+        selectedRole = button.dataset.selectRole;
+        document.querySelectorAll("[data-select-role]").forEach(option => option.classList.toggle("active", option.dataset.selectRole === selectedRole));
+        document.getElementById("selected-role-label").textContent = roleLabel(selectedRole);
+      }));
+      document.getElementById("close-auth").addEventListener("click", closeModal);
+      document.getElementById("auth-form").addEventListener("submit", event => {
+        event.preventDefault();
+        const name = document.getElementById("auth-name").value.trim();
+        const email = document.getElementById("auth-email").value.trim();
+        if (!name || !email) {
+          document.getElementById("auth-error").textContent = "Συμπλήρωσε όνομα και email.";
+          document.getElementById("auth-error").classList.remove("hidden");
+          return;
+        }
+        const initials = name.split(/\s+/).map(word => word[0]).slice(0, 2).join("").toUpperCase();
+        offlineUser = { name, email, role: selectedRole, initials: initials || "A" };
+        localStorage.setItem("aperion-offline-user", JSON.stringify(offlineUser));
+        closeModal();
+        updateChrome();
+        navigate(targetRoute);
+        showToast(`Συνδέθηκες ως ${roleLabel(selectedRole)}.`);
+      });
+    }
 
     function showToast(message) {
       clearTimeout(toastTimer);
@@ -407,7 +469,10 @@
 
     function attachHomeEvents() {
       document.querySelectorAll("[data-category]").forEach(button => button.addEventListener("click", () => { activeCategory = button.dataset.category; renderHome(); document.getElementById("experiences").scrollIntoView({ behavior: "smooth" }); }));
-      document.querySelectorAll("[data-book]").forEach(button => button.addEventListener("click", () => openBookingModal(experiences.find(item => item.id === button.dataset.book))));
+       document.querySelectorAll("[data-book]").forEach(button => button.addEventListener("click", () => {
+         if (!offlineUser) return showAuthModal("/");
+         openBookingModal(experiences.find(item => item.id === button.dataset.book));
+       }));
       document.getElementById("quote-form").addEventListener("submit", event => {
         event.preventDefault();
         const duration = Number(document.getElementById("duration").value);
@@ -491,6 +556,15 @@
     function closeModal() { activeQuote = null; openBooking = null; document.getElementById("modal-root").innerHTML = ""; }
 
     function navigate(route) {
+      const requiredRole = { "/bookings": "traveler", "/driver": "driver", "/admin": "operator" }[route];
+      if (requiredRole && !offlineUser) {
+        showAuthModal(route);
+        return;
+      }
+      if (requiredRole && offlineUser.role !== requiredRole) {
+        showToast(`Αυτή η περιοχή είναι διαθέσιμη μόνο για ${roleLabel(requiredRole)}.`);
+        return;
+      }
       if (route === "/") renderHome();
       if (route === "/bookings") renderBookings();
       if (route === "/driver") renderDriver();
@@ -511,6 +585,7 @@
       const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "aperion-travel-experiences.html"; link.click(); URL.revokeObjectURL(link.href);
       showToast("Το HTML αρχείο κατέβηκε.");
     });
+    updateChrome();
     save();
     navigate("/");
   </script>

@@ -18,7 +18,49 @@ tags:
     description: Driver marketplace and dispatch
   - name: admin
     description: Back-office operations
+  - name: auth
+    description: Authenticated account profile
 paths:
+  /me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the signed-in account profile
+      security:
+        - ClerkSession: []
+      responses:
+        "200":
+          description: Current account profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /me/role:
+    patch:
+      operationId: updateAccountRole
+      tags: [auth]
+      summary: Choose the account role
+      security:
+        - ClerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RoleUpdateInput"
+      responses:
+        "200":
+          description: Updated account role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleUpdate"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /healthz:
     get:
       operationId: healthCheck
@@ -220,13 +262,62 @@ components:
       schema:
         type: string
   responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
     NotFound:
       description: Resource not found
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+  securitySchemes:
+    ClerkSession:
+      type: apiKey
+      in: cookie
+      name: __session
   schemas:
+    AccountRole:
+      type: string
+      enum: [traveler, driver, operator]
+    CurrentUser:
+      type: object
+      properties:
+        id: { type: string }
+        firstName: { type: ["string", "null"] }
+        lastName: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
+        imageUrl: { type: string }
+        role:
+          anyOf:
+            - $ref: "#/components/schemas/AccountRole"
+            - type: "null"
+        availableRoles:
+          type: array
+          items:
+            $ref: "#/components/schemas/AccountRole"
+      required: [id, firstName, lastName, email, imageUrl, role, availableRoles]
+    RoleUpdateInput:
+      type: object
+      properties:
+        role:
+          $ref: "#/components/schemas/AccountRole"
+      required: [role]
+    RoleUpdate:
+      type: object
+      properties:
+        role:
+          $ref: "#/components/schemas/AccountRole"
+      required: [role]
     HealthStatus:
       type: object
       properties:

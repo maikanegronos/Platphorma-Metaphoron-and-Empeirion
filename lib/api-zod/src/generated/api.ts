@@ -9,6 +9,32 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Get the signed-in account profile
+ */
+export const GetCurrentUserResponse = zod.object({
+  "id": zod.string(),
+  "firstName": zod.string().nullable(),
+  "lastName": zod.string().nullable(),
+  "email": zod.string().nullable(),
+  "imageUrl": zod.string(),
+  "role": zod.union([zod.enum(['traveler', 'driver', 'operator']),zod.null()]),
+  "availableRoles": zod.array(zod.enum(['traveler', 'driver', 'operator']))
+})
+
+
+/**
+ * @summary Choose the account role
+ */
+export const UpdateAccountRoleBody = zod.object({
+  "role": zod.enum(['traveler', 'driver', 'operator'])
+})
+
+export const UpdateAccountRoleResponse = zod.object({
+  "role": zod.enum(['traveler', 'driver', 'operator'])
+})
+
+
+/**
  * Returns server health status
  * @summary Health check
  */

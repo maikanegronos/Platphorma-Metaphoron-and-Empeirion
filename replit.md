@@ -24,6 +24,7 @@
 
 - `artifacts/travel-experiences` — responsive customer, driver και admin web app.
 - `artifacts/api-server/src/routes/travel.ts` — API handlers για εμπειρίες, quotes, bookings, jobs και driver review.
+- `artifacts/api-server/src/routes/auth.ts` — Clerk profile και επιλογή ρόλου.
 - `artifacts/api-server/src/lib/travel-data.ts` — seed data και κοινή λογική δυναμικής τιμολόγησης.
 - `lib/api-spec/openapi.yaml` — source of truth για τα API contracts και τα generated hooks.
 - `lib/db/src/schema/travel.ts` — Drizzle schema για experiences, bookings, driver jobs και drivers.
@@ -38,6 +39,9 @@
 
 ## Product
 
+- Η online εφαρμογή χρησιμοποιεί Replit-managed Clerk με cookie-based sessions. Οι ρόλοι αποθηκεύονται σε Clerk `publicMetadata.role`.
+- Η επιλογή Operator είναι διαθέσιμη στο MVP/demo· σε production χρειάζεται controlled provisioning ή έγκριση admin.
+
 - Οι ταξιδιώτες ανακαλύπτουν curated experiences, φτιάχνουν custom διαδρομή με quote και δημιουργούν κράτηση με προκαταβολή ή εξόφληση.
 - Οι οδηγοί βλέπουν διαθέσιμες δουλειές και μπορούν να κάνουν claim με το όχημά τους.
 - Οι operators βλέπουν φακέλους συνεργατών και εγκρίνουν ή απορρίπτουν αιτήσεις.
@@ -49,6 +53,9 @@
 - Όλες οι απαντήσεις προς τον χρήστη και το UI πρέπει να είναι στα ελληνικά.
 
 ## Gotchas
+
+- Τα `/api/me` και `/api/me/role` περιγράφονται στο OpenAPI και τα client/hooks παράγονται μαζί με τα υπόλοιπα API contracts.
+- Το `format: email` στο OpenAPI παράγει `zod.email()` που δεν υποστηρίζεται από την τρέχουσα Zod έκδοση· για nullable profile emails κρατάμε `type: string` χωρίς format.
 
 - Μετά από αλλαγές στο `lib/api-spec/openapi.yaml` πρέπει να τρέχει codegen πριν χρησιμοποιηθούν τα generated hooks.
 - Η τρέχουσα έκδοση Zod δεν υποστηρίζει το παραγόμενο `zod.int()`, επομένως τα integer πεδία του OpenAPI δηλώνονται ως number και γίνεται στρογγυλοποίηση στο boundary όπου χρειάζεται.

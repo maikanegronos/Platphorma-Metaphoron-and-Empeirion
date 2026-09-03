@@ -5,6 +5,36 @@
  * Travel Experiences marketplace API
  * OpenAPI spec version: 0.1.0
  */
+export type AccountRole = typeof AccountRole[keyof typeof AccountRole];
+
+
+export const AccountRole = {
+  traveler: 'traveler',
+  driver: 'driver',
+  operator: 'operator',
+} as const;
+
+export interface CurrentUser {
+  id: string;
+  /** @nullable */
+  firstName: string | null;
+  /** @nullable */
+  lastName: string | null;
+  /** @nullable */
+  email: string | null;
+  imageUrl: string;
+  role: AccountRole | null;
+  availableRoles: AccountRole[];
+}
+
+export interface RoleUpdateInput {
+  role: AccountRole;
+}
+
+export interface RoleUpdate {
+  role: AccountRole;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -183,6 +213,16 @@ export interface DashboardSummary {
   savedPlaces: number;
   nextBooking: Booking | null;
 }
+
+/**
+ * Invalid request
+ */
+export type BadRequestResponse = Error;
+
+/**
+ * Authentication required
+ */
+export type UnauthorizedResponse = Error;
 
 /**
  * Resource not found

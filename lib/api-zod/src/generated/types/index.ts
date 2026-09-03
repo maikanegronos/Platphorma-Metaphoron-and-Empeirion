@@ -6,10 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './accountRole';
+export * from './badRequestResponse';
 export * from './booking';
 export * from './bookingInput';
 export * from './bookingInputPaymentPlan';
 export * from './bookingStatus';
+export * from './currentUser';
 export * from './dashboardSummary';
 export * from './driver';
 export * from './driverJob';
@@ -27,3 +30,6 @@ export * from './priceLine';
 export * from './quote';
 export * from './quoteInput';
 export * from './quoteInputVehicleType';
+export * from './roleUpdate';
+export * from './roleUpdateInput';
+export * from './unauthorizedResponse';
