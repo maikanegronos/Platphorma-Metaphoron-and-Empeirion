@@ -74,6 +74,19 @@ export const driversTable = pgTable("drivers", {
   documents: integer("documents").notNull(),
 });
 
+export const driverDocumentsTable = pgTable("driver_documents", {
+  id: text("id").primaryKey(),
+  driverId: text("driver_id").notNull(),
+  objectPath: text("object_path").notNull(),
+  fileName: text("file_name").notNull(),
+  contentType: text("content_type").notNull(),
+  size: integer("size").notNull(),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const insertExperienceSchema = createInsertSchema(experiencesTable);
 export type InsertExperience = z.infer<typeof insertExperienceSchema>;
 export type Experience = typeof experiencesTable.$inferSelect;
@@ -89,3 +102,7 @@ export type DriverJob = typeof driverJobsTable.$inferSelect;
 export const insertDriverSchema = createInsertSchema(driversTable);
 export type InsertDriver = z.infer<typeof insertDriverSchema>;
 export type Driver = typeof driversTable.$inferSelect;
+
+export const insertDriverDocumentSchema = createInsertSchema(driverDocumentsTable);
+export type InsertDriverDocument = z.infer<typeof insertDriverDocumentSchema>;
+export type DriverDocument = typeof driverDocumentsTable.$inferSelect;

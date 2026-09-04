@@ -20,6 +20,8 @@ tags:
     description: Back-office operations
   - name: auth
     description: Authenticated account profile
+  - name: Storage
+    description: Private driver document storage
 paths:
   /me:
     get:
@@ -293,6 +295,125 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Booking"
+  /storage/uploads/request-url:
+    post:
+      tags: [Storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned private upload URL
+      security:
+        - ClerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /storage/objects/{objectPath}:
+    get:
+      tags: [Storage]
+      operationId: getStorageObject
+      summary: Serve a protected private object
+      security:
+        - ClerkSession: []
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Private object
+          content:
+            "*/*":
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /driver/documents:
+    post:
+      tags: [driver]
+      operationId: createDriverDocument
+      summary: Register an uploaded driver document
+      security:
+        - ClerkSession: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DriverDocumentInput"
+      responses:
+        "201":
+          description: Driver document registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DriverDocument"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /admin/driver-documents:
+    get:
+      tags: [admin]
+      operationId: listAdminDriverDocuments
+      summary: List uploaded driver documents
+      security:
+        - ClerkSession: []
+      responses:
+        "200":
+          description: Uploaded driver documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DriverDocument"
+  /admin/driver-documents/{id}/review:
+    patch:
+      tags: [admin]
+      operationId: reviewDriverDocument
+      summary: Review an uploaded driver document
+      security:
+        - ClerkSession: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DriverDocumentReviewInput"
+      responses:
+        "200":
+          description: Reviewed document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DriverDocument"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /admin/drivers/{id}/review:
     patch:
       operationId: reviewDriver
@@ -538,6 +659,46 @@ components:
         documents: { type: number }
       required: [id, name, city, vehicle, vehicleType, rating, trips, status, documents]
     DriverReviewInput:
+      type: object
+      properties:
+        status: { type: string, enum: [approved, rejected] }
+      required: [status]
+    UploadUrlRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        size: { type: number, minimum: 1 }
+        contentType: { type: string, minLength: 1 }
+      required: [name, size, contentType]
+    UploadUrlResponse:
+      type: object
+      properties:
+        uploadURL: { type: string, minLength: 1 }
+        objectPath: { type: string }
+        metadata:
+          $ref: "#/components/schemas/UploadUrlRequest"
+      required: [uploadURL, objectPath, metadata]
+    DriverDocumentInput:
+      type: object
+      properties:
+        objectPath: { type: string, minLength: 1 }
+        fileName: { type: string, minLength: 1 }
+        contentType: { type: string, minLength: 1 }
+        size: { type: number, minimum: 1 }
+      required: [objectPath, fileName, contentType, size]
+    DriverDocument:
+      type: object
+      properties:
+        id: { type: string }
+        driverId: { type: string }
+        objectPath: { type: string }
+        fileName: { type: string }
+        contentType: { type: string }
+        size: { type: number }
+        status: { type: string, enum: [pending, approved, rejected] }
+        createdAt: { type: string, format: date-time }
+      required: [id, driverId, objectPath, fileName, contentType, size, status, createdAt]
+    DriverDocumentReviewInput:
       type: object
       properties:
         status: { type: string, enum: [approved, rejected] }

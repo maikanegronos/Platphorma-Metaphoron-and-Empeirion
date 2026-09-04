@@ -243,6 +243,65 @@ export interface DriverReviewInput {
   status: DriverReviewInputStatus;
 }
 
+export interface UploadUrlRequest {
+  /** @minLength 1 */
+  name: string;
+  /** @minimum 1 */
+  size: number;
+  /** @minLength 1 */
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  /** @minLength 1 */
+  uploadURL: string;
+  objectPath: string;
+  metadata: UploadUrlRequest;
+}
+
+export interface DriverDocumentInput {
+  /** @minLength 1 */
+  objectPath: string;
+  /** @minLength 1 */
+  fileName: string;
+  /** @minLength 1 */
+  contentType: string;
+  /** @minimum 1 */
+  size: number;
+}
+
+export type DriverDocumentStatus = typeof DriverDocumentStatus[keyof typeof DriverDocumentStatus];
+
+
+export const DriverDocumentStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface DriverDocument {
+  id: string;
+  driverId: string;
+  objectPath: string;
+  fileName: string;
+  contentType: string;
+  size: number;
+  status: DriverDocumentStatus;
+  createdAt: string;
+}
+
+export type DriverDocumentReviewInputStatus = typeof DriverDocumentReviewInputStatus[keyof typeof DriverDocumentReviewInputStatus];
+
+
+export const DriverDocumentReviewInputStatus = {
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface DriverDocumentReviewInput {
+  status: DriverDocumentReviewInputStatus;
+}
+
 export interface DashboardSummary {
   upcomingCount: number;
   totalTrips: number;

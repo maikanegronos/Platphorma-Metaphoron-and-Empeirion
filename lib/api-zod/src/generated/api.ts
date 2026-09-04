@@ -352,6 +352,114 @@ export const ListAdminBookingsResponse = zod.array(ListAdminBookingsResponseItem
 
 
 /**
+ * @summary Request a presigned private upload URL
+ */
+
+
+
+
+
+export const RequestUploadUrlBody = zod.object({
+  "name": zod.string().min(1),
+  "size": zod.number().min(1),
+  "contentType": zod.string().min(1)
+})
+
+
+
+
+
+
+
+export const RequestUploadUrlResponse = zod.object({
+  "uploadURL": zod.string().min(1),
+  "objectPath": zod.string(),
+  "metadata": zod.object({
+  "name": zod.string().min(1),
+  "size": zod.number().min(1),
+  "contentType": zod.string().min(1)
+})
+})
+
+
+/**
+ * @summary Serve a protected private object
+ */
+export const GetStorageObjectParams = zod.object({
+  "objectPath": zod.coerce.string()
+})
+
+export const GetStorageObjectResponse = zod.unknown()
+
+
+/**
+ * @summary Register an uploaded driver document
+ */
+
+
+
+
+
+
+export const CreateDriverDocumentBody = zod.object({
+  "objectPath": zod.string().min(1),
+  "fileName": zod.string().min(1),
+  "contentType": zod.string().min(1),
+  "size": zod.number().min(1)
+})
+
+export const CreateDriverDocumentResponse = zod.object({
+  "id": zod.string(),
+  "driverId": zod.string(),
+  "objectPath": zod.string(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number(),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List uploaded driver documents
+ */
+export const ListAdminDriverDocumentsResponseItem = zod.object({
+  "id": zod.string(),
+  "driverId": zod.string(),
+  "objectPath": zod.string(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number(),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "createdAt": zod.coerce.date()
+})
+export const ListAdminDriverDocumentsResponse = zod.array(ListAdminDriverDocumentsResponseItem)
+
+
+/**
+ * @summary Review an uploaded driver document
+ */
+export const ReviewDriverDocumentParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ReviewDriverDocumentBody = zod.object({
+  "status": zod.enum(['approved', 'rejected'])
+})
+
+export const ReviewDriverDocumentResponse = zod.object({
+  "id": zod.string(),
+  "driverId": zod.string(),
+  "objectPath": zod.string(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number(),
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Approve or reject a driver
  */
 export const ReviewDriverParams = zod.object({

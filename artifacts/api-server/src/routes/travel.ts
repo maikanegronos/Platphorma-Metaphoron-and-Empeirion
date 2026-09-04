@@ -1,11 +1,14 @@
 import { Router, type IRouter } from "express";
-import { and, asc, eq, or } from "drizzle-orm";
+import { and, asc, desc, eq, or } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
 import {
   ClaimDriverJobBody,
   ClaimDriverJobParams,
   ClaimDriverJobResponse,
   CreateBookingBody,
   CreateBookingResponse,
+  CreateDriverDocumentBody,
+  CreateDriverDocumentResponse,
   CreateQuoteBody,
   CreateQuoteResponse,
   UpdateDriverJobStatusBody,
@@ -13,6 +16,7 @@ import {
   GetExperienceParams,
   GetExperienceResponse,
   ListAdminDriversResponse,
+  ListAdminDriverDocumentsResponse,
   ListBookingsQueryParams,
   ListBookingsResponse,
   ListDriverJobsResponse,
@@ -20,11 +24,15 @@ import {
   ReviewDriverBody,
   ReviewDriverParams,
   ReviewDriverResponse,
+  ReviewDriverDocumentBody,
+  ReviewDriverDocumentParams,
+  ReviewDriverDocumentResponse,
 } from "@workspace/api-zod";
 import {
   bookingsTable,
   db,
   driverJobsTable,
+  driverDocumentsTable,
   driversTable,
   experiencesTable,
 } from "@workspace/db";
