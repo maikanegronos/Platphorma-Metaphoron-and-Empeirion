@@ -97,6 +97,16 @@ export interface Quote {
   breakdown: PriceLine[];
 }
 
+export type BookingInputVehicleType = typeof BookingInputVehicleType[keyof typeof BookingInputVehicleType];
+
+
+export const BookingInputVehicleType = {
+  sedan: 'sedan',
+  van: 'van',
+  minibus: 'minibus',
+  bus: 'bus',
+} as const;
+
 export type BookingInputPaymentPlan = typeof BookingInputPaymentPlan[keyof typeof BookingInputPaymentPlan];
 
 
@@ -113,9 +123,14 @@ export interface BookingInput {
   /** @minimum 1 */
   passengers: number;
   pickup: string;
+  /** @minLength 8 */
+  customerPhone: string;
+  time: string;
+  destination?: string;
+  vehicleType?: BookingInputVehicleType;
   /** @minimum 0 */
   total: number;
-  paymentPlan: BookingInputPaymentPlan;
+  paymentPlan?: BookingInputPaymentPlan;
 }
 
 export type BookingStatus = typeof BookingStatus[keyof typeof BookingStatus];
@@ -134,6 +149,8 @@ export interface Booking {
   title: string;
   date: string;
   pickup: string;
+  /** @nullable */
+  customerPhone: string | null;
   passengers: number;
   total: number;
   paid: number;
@@ -150,11 +167,15 @@ export type DriverJobStatus = typeof DriverJobStatus[keyof typeof DriverJobStatu
 export const DriverJobStatus = {
   open: 'open',
   claimed: 'claimed',
+  'in-progress': 'in-progress',
   completed: 'completed',
+  cancelled: 'cancelled',
 } as const;
 
 export interface DriverJob {
   id: string;
+  /** @nullable */
+  bookingId: string | null;
   title: string;
   date: string;
   time: string;
@@ -165,12 +186,26 @@ export interface DriverJob {
   payout: number;
   distanceKm: number;
   status: DriverJobStatus;
+  /** @nullable */
+  customerPhone: string | null;
   isCustom: boolean;
 }
 
 export interface JobClaimInput {
   driverId: string;
   vehicle: string;
+}
+
+export type DriverJobStatusInputStatus = typeof DriverJobStatusInputStatus[keyof typeof DriverJobStatusInputStatus];
+
+
+export const DriverJobStatusInputStatus = {
+  'in-progress': 'in-progress',
+  completed: 'completed',
+} as const;
+
+export interface DriverJobStatusInput {
+  status: DriverJobStatusInputStatus;
 }
 
 export type DriverStatus = typeof DriverStatus[keyof typeof DriverStatus];

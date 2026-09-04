@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { BookingInputPaymentPlan } from './bookingInputPaymentPlan';
+import type { BookingInputVehicleType } from './bookingInputVehicleType';
 
 export interface BookingInput {
   customerId: string;
@@ -15,7 +16,12 @@ export interface BookingInput {
   /** @minimum 1 */
   passengers: number;
   pickup: string;
+  /** @minLength 8 */
+  customerPhone: string;
+  time: string;
+  destination?: string;
+  vehicleType?: BookingInputVehicleType;
   /** @minimum 0 */
   total: number;
-  paymentPlan: BookingInputPaymentPlan;
+  paymentPlan?: BookingInputPaymentPlan;
 }

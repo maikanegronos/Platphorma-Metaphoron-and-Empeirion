@@ -29,7 +29,9 @@ export const bookingsTable = pgTable("bookings", {
   experienceId: text("experience_id"),
   title: text("title").notNull(),
   scheduledDate: date("scheduled_date", { mode: "string" }).notNull(),
+  scheduledTime: text("scheduled_time"),
   pickup: text("pickup").notNull(),
+  customerPhone: text("customer_phone"),
   passengers: integer("passengers").notNull(),
   total: doublePrecision("total").notNull(),
   paid: doublePrecision("paid").notNull(),
@@ -43,6 +45,7 @@ export const bookingsTable = pgTable("bookings", {
 
 export const driverJobsTable = pgTable("driver_jobs", {
   id: text("id").primaryKey(),
+  bookingId: text("booking_id"),
   title: text("title").notNull(),
   scheduledDate: date("scheduled_date", { mode: "string" }).notNull(),
   time: text("time").notNull(),
@@ -56,6 +59,7 @@ export const driverJobsTable = pgTable("driver_jobs", {
   isCustom: integer("is_custom").notNull().default(0),
   claimedDriverId: text("claimed_driver_id"),
   claimedVehicle: text("claimed_vehicle"),
+  customerPhone: text("customer_phone"),
 });
 
 export const driversTable = pgTable("drivers", {

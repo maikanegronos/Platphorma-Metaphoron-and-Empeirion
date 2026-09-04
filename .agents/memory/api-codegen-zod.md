@@ -7,4 +7,4 @@ The installed Orval/Zod combination emits `zod.int()` for OpenAPI integer schema
 
 **Why:** Code generation succeeds but the library typecheck fails after generation if unsupported integer or email helpers are emitted.
 
-**How to apply:** Check generated Zod output after OpenAPI changes and run the API-spec codegen command before relying on new hooks or server validators.
+**How to apply:** Check generated Zod output after OpenAPI changes and run the API-spec codegen command before relying on new hooks or server validators. For request bodies, import the operation-specific generated validator (for example, `Update...Body`) rather than assuming the component interface itself is a runtime schema.

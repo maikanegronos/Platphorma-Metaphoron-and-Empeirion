@@ -9,6 +9,8 @@ import type { DriverJobStatus } from './driverJobStatus';
 
 export interface DriverJob {
   id: string;
+  /** @nullable */
+  bookingId: string | null;
   title: string;
   date: Date;
   time: string;
@@ -19,5 +21,7 @@ export interface DriverJob {
   payout: number;
   distanceKm: number;
   status: DriverJobStatus;
+  /** @nullable */
+  customerPhone: string | null;
   isCustom: boolean;
 }

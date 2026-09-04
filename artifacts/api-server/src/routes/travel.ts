@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, or } from "drizzle-orm";
 import {
   ClaimDriverJobBody,
   ClaimDriverJobParams,
@@ -8,6 +8,7 @@ import {
   CreateBookingResponse,
   CreateQuoteBody,
   CreateQuoteResponse,
+  UpdateDriverJobStatusBody,
   GetDashboardSummaryResponse,
   GetExperienceParams,
   GetExperienceResponse,
@@ -37,6 +38,7 @@ function bookingResponse(booking: typeof bookingsTable.$inferSelect) {
     id: booking.id,
     title: booking.title,
     date: booking.scheduledDate,
+    customerPhone: booking.customerPhone,
     pickup: booking.pickup,
     passengers: booking.passengers,
     total: booking.total,
@@ -50,6 +52,7 @@ function bookingResponse(booking: typeof bookingsTable.$inferSelect) {
 function driverJobResponse(job: typeof driverJobsTable.$inferSelect) {
   return {
     id: job.id,
+    bookingId: job.bookingId,
     title: job.title,
     date: job.scheduledDate,
     time: job.time,
@@ -61,6 +64,7 @@ function driverJobResponse(job: typeof driverJobsTable.$inferSelect) {
     distanceKm: job.distanceKm,
     status: job.status,
     isCustom: Boolean(job.isCustom),
+    customerPhone: job.customerPhone,
   };
 }
 
@@ -139,33 +143,88 @@ router.post("/bookings", requireAuth, async (req, res): Promise<void> => {
   }
 
   const { data } = parsed;
-  const paid = data.paymentPlan === "full" ? data.total : Math.round(data.total * 0.3 * 100) / 100;
-  const [booking] = await db
-    .insert(bookingsTable)
-    .values({
-      id: `booking-${Date.now()}`,
-       customerId: req.userId!,
-      experienceId: data.experienceId ?? null,
+  const bookingId = `booking-${Date.now()}`;
+  const scheduledDate = formatDate(data.date);
+  const [booking] = await db.transaction(async (tx) => {
+    const [createdBooking] = await tx
+      .insert(bookingsTable)
+      .values({
+        id: bookingId,
+        customerId: req.userId!,
+        experienceId: data.experienceId ?? null,
+        title: data.title,
+        scheduledDate,
+        scheduledTime: data.time,
+        customerPhone: data.customerPhone,
+        pickup: data.pickup,
+        passengers: Math.round(data.passengers),
+        total: data.total,
+        paid: 0,
+        status: "pending",
+        driverName: null,
+        vehicle: null,
+      })
+      .returning();
+
+    await tx.insert(driverJobsTable).values({
+      id: `job-${bookingId}`,
+      bookingId,
       title: data.title,
-      scheduledDate: formatDate(data.date),
+      scheduledDate,
+      time: data.time,
       pickup: data.pickup,
+      destination: data.destination ?? data.title,
       passengers: Math.round(data.passengers),
-      total: data.total,
-      paid,
-      status: "confirmed",
-      driverName: null,
-      vehicle: null,
-    })
-    .returning();
+      vehicleType: data.vehicleType ?? "van",
+      payout: Math.round(data.total * 0.82 * 100) / 100,
+      distanceKm: 0,
+      status: "open",
+      isCustom: data.experienceId ? 0 : 1,
+      customerPhone: data.customerPhone,
+    });
+
+    return [createdBooking];
+  });
 
   res.status(201).json(CreateBookingResponse.parse(bookingResponse(booking)));
 });
 
-router.get("/driver/jobs", requireRole("driver"), async (_req, res): Promise<void> => {
+router.patch("/bookings/:id/cancel", requireAuth, async (req, res): Promise<void> => {
+  const bookingId = req.params.id as string;
+  const [booking] = await db
+    .update(bookingsTable)
+    .set({ status: "cancelled" })
+    .where(
+      and(
+        eq(bookingsTable.id, bookingId),
+        eq(bookingsTable.customerId, req.userId!),
+        or(eq(bookingsTable.status, "pending"), eq(bookingsTable.status, "confirmed")),
+      ),
+    )
+    .returning();
+
+  if (!booking) {
+    const [existing] = await db
+      .select({ id: bookingsTable.id })
+      .from(bookingsTable)
+      .where(and(eq(bookingsTable.id, bookingId), eq(bookingsTable.customerId, req.userId!)));
+    res.status(existing ? 409 : 404).json({ error: existing ? "Η κράτηση δεν μπορεί πλέον να ακυρωθεί." : "Η κράτηση δεν βρέθηκε." });
+    return;
+  }
+
+  await db
+    .update(driverJobsTable)
+    .set({ status: "cancelled" })
+    .where(eq(driverJobsTable.bookingId, booking.id));
+
+  res.json(CreateBookingResponse.parse(bookingResponse(booking)));
+});
+
+router.get("/driver/jobs", requireRole("driver"), async (req, res): Promise<void> => {
   const jobs = await db
     .select()
     .from(driverJobsTable)
-    .where(eq(driverJobsTable.status, "open"))
+    .where(or(eq(driverJobsTable.status, "open"), eq(driverJobsTable.claimedDriverId, req.userId!)))
     .orderBy(asc(driverJobsTable.scheduledDate));
   res.json(ListDriverJobsResponse.parse(jobs.map(driverJobResponse)));
 });
@@ -195,6 +254,53 @@ router.post("/driver/jobs/:id/claim", requireRole("driver"), async (req, res): P
   if (!job) {
     res.status(409).json({ error: "This job is no longer available" });
     return;
+  }
+
+  if (job.bookingId) {
+    await db
+      .update(bookingsTable)
+      .set({ driverName: "Ο οδηγός σου", vehicle: body.data.vehicle })
+      .where(eq(bookingsTable.id, job.bookingId));
+  }
+
+  res.json(ClaimDriverJobResponse.parse(driverJobResponse(job)));
+});
+
+router.patch("/driver/jobs/:id/status", requireRole("driver"), async (req, res): Promise<void> => {
+  const jobId = req.params.id as string;
+  const body = UpdateDriverJobStatusBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [current] = await db
+    .select()
+    .from(driverJobsTable)
+    .where(and(eq(driverJobsTable.id, jobId), eq(driverJobsTable.claimedDriverId, req.userId!)));
+  if (!current) {
+    res.status(404).json({ error: "Η διαδρομή δεν βρέθηκε." });
+    return;
+  }
+  const validTransition =
+    (current.status === "claimed" && body.data.status === "in-progress") ||
+    (current.status === "in-progress" && body.data.status === "completed");
+  if (!validTransition) {
+    res.status(409).json({ error: "Μη έγκυρη αλλαγή κατάστασης διαδρομής." });
+    return;
+  }
+
+  const [job] = await db
+    .update(driverJobsTable)
+    .set({ status: body.data.status })
+    .where(eq(driverJobsTable.id, current.id))
+    .returning();
+
+  if (job.bookingId) {
+    await db
+      .update(bookingsTable)
+      .set({ status: body.data.status === "completed" ? "completed" : "in-progress" })
+      .where(eq(bookingsTable.id, job.bookingId));
   }
 
   res.json(ClaimDriverJobResponse.parse(driverJobResponse(job)));

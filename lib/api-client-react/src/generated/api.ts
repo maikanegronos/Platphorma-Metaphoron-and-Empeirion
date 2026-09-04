@@ -27,7 +27,9 @@ import type {
   DashboardSummary,
   Driver,
   DriverJob,
+  DriverJobStatusInput,
   DriverReviewInput,
+  Error,
   Experience,
   HealthStatus,
   JobClaimInput,
@@ -673,6 +675,77 @@ export const useCreateBooking = <TError = ErrorType<unknown>,
       return useMutation(getCreateBookingMutationOptions(options));
     }
 
+export const getCancelBookingUrl = (id: string,) => {
+
+
+
+
+  return `/api/bookings/${id}/cancel`
+}
+
+/**
+ * @summary Cancel a customer booking
+ */
+export const cancelBooking = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<Booking> => {
+
+  return customFetch<Booking>(getCancelBookingUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getCancelBookingMutationOptions = <TError = ErrorType<NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelBooking>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelBooking>>, TError,{id: string}, TContext> => {
+
+const mutationKey = ['cancelBooking'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelBooking>>, {id: string}> = (props) => {
+          const {id} = props ?? {};
+
+          return  cancelBooking(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelBookingMutationResult = NonNullable<Awaited<ReturnType<typeof cancelBooking>>>
+
+    export type CancelBookingMutationError = ErrorType<NotFoundResponse | Error>
+
+    /**
+ * @summary Cancel a customer booking
+ */
+export const useCancelBooking = <TError = ErrorType<NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelBooking>>, TError,{id: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelBooking>>,
+        TError,
+        {id: string},
+        TContext
+      > => {
+      return useMutation(getCancelBookingMutationOptions(options));
+    }
+
 export const getListDriverJobsUrl = () => {
 
 
@@ -820,6 +893,78 @@ export const useClaimDriverJob = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getClaimDriverJobMutationOptions(options));
+    }
+
+export const getUpdateDriverJobStatusUrl = (id: string,) => {
+
+
+
+
+  return `/api/driver/jobs/${id}/status`
+}
+
+/**
+ * @summary Update the status of a claimed driver job
+ */
+export const updateDriverJobStatus = async (id: string,
+    driverJobStatusInput: DriverJobStatusInput, options?: Parameters<typeof customFetch>[1]): Promise<DriverJob> => {
+
+  return customFetch<DriverJob>(getUpdateDriverJobStatusUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(driverJobStatusInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateDriverJobStatusMutationOptions = <TError = ErrorType<NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDriverJobStatus>>, TError,{id: string;data: BodyType<DriverJobStatusInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateDriverJobStatus>>, TError,{id: string;data: BodyType<DriverJobStatusInput>}, TContext> => {
+
+const mutationKey = ['updateDriverJobStatus'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateDriverJobStatus>>, {id: string;data: BodyType<DriverJobStatusInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateDriverJobStatus(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateDriverJobStatusMutationResult = NonNullable<Awaited<ReturnType<typeof updateDriverJobStatus>>>
+    export type UpdateDriverJobStatusMutationBody = BodyType<DriverJobStatusInput>
+    export type UpdateDriverJobStatusMutationError = ErrorType<NotFoundResponse | Error>
+
+    /**
+ * @summary Update the status of a claimed driver job
+ */
+export const useUpdateDriverJobStatus = <TError = ErrorType<NotFoundResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDriverJobStatus>>, TError,{id: string;data: BodyType<DriverJobStatusInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateDriverJobStatus>>,
+        TError,
+        {id: string;data: BodyType<DriverJobStatusInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateDriverJobStatusMutationOptions(options));
     }
 
 export const getGetDashboardSummaryUrl = () => {

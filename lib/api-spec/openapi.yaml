@@ -127,6 +127,8 @@ paths:
       operationId: listBookings
       tags: [bookings]
       summary: List customer bookings
+      security:
+        - ClerkSession: []
       parameters:
         - name: customerId
           in: query
@@ -159,6 +161,30 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Booking"
+  /bookings/{id}/cancel:
+    patch:
+      operationId: cancelBooking
+      tags: [bookings]
+      summary: Cancel a customer booking
+      security:
+        - ClerkSession: []
+      parameters:
+        - $ref: "#/components/parameters/BookingId"
+      responses:
+        "200":
+          description: Cancelled booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Booking cannot be cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /driver/jobs:
     get:
       operationId: listDriverJobs
@@ -195,6 +221,36 @@ paths:
                 $ref: "#/components/schemas/DriverJob"
         "409":
           description: Job is no longer available
+  /driver/jobs/{id}/status:
+    patch:
+      operationId: updateDriverJobStatus
+      tags: [driver]
+      summary: Update the status of a claimed driver job
+      security:
+        - ClerkSession: []
+      parameters:
+        - $ref: "#/components/parameters/JobId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DriverJobStatusInput"
+      responses:
+        "200":
+          description: Updated driver job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DriverJob"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Invalid job transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -250,6 +306,12 @@ components:
       schema:
         type: string
     JobId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    BookingId:
       name: id
       in: path
       required: true
@@ -392,9 +454,15 @@ components:
         date: { type: string, format: date }
         passengers: { type: number, minimum: 1 }
         pickup: { type: string }
+        customerPhone:
+          type: string
+          minLength: 8
+        time: { type: string }
+        destination: { type: string }
+        vehicleType: { type: string, enum: [sedan, van, minibus, bus] }
         total: { type: number, minimum: 0 }
         paymentPlan: { type: string, enum: [deposit, full] }
-      required: [customerId, title, date, passengers, pickup, total, paymentPlan]
+      required: [customerId, title, date, passengers, pickup, customerPhone, time, total]
     Booking:
       type: object
       properties:
@@ -402,17 +470,19 @@ components:
         title: { type: string }
         date: { type: string, format: date }
         pickup: { type: string }
+        customerPhone: { type: ["string", "null"] }
         passengers: { type: number }
         total: { type: number }
         paid: { type: number }
         status: { type: string, enum: [confirmed, pending, in-progress, completed, cancelled] }
         driverName: { type: ["string", "null"] }
         vehicle: { type: ["string", "null"] }
-      required: [id, title, date, pickup, passengers, total, paid, status, driverName, vehicle]
+      required: [id, title, date, pickup, customerPhone, passengers, total, paid, status, driverName, vehicle]
     DriverJob:
       type: object
       properties:
         id: { type: string }
+        bookingId: { type: ["string", "null"] }
         title: { type: string }
         date: { type: string, format: date }
         time: { type: string }
@@ -422,15 +492,21 @@ components:
         vehicleType: { type: string }
         payout: { type: number }
         distanceKm: { type: number }
-        status: { type: string, enum: [open, claimed, completed] }
+        status: { type: string, enum: [open, claimed, in-progress, completed, cancelled] }
+        customerPhone: { type: ["string", "null"] }
         isCustom: { type: boolean }
-      required: [id, title, date, time, pickup, destination, passengers, vehicleType, payout, distanceKm, status, isCustom]
+      required: [id, bookingId, title, date, time, pickup, destination, passengers, vehicleType, payout, distanceKm, status, isCustom, customerPhone]
     JobClaimInput:
       type: object
       properties:
         driverId: { type: string }
         vehicle: { type: string }
       required: [driverId, vehicle]
+    DriverJobStatusInput:
+      type: object
+      properties:
+        status: { type: string, enum: [in-progress, completed] }
+      required: [status]
     Driver:
       type: object
       properties:

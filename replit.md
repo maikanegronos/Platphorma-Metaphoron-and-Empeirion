@@ -35,7 +35,7 @@
 - Το API contract ορίζεται πρώτα στο OpenAPI και οι client/Zod τύποι παράγονται με Orval.
 - Το MVP χρησιμοποιεί το προρυθμισμένο PostgreSQL και seed data για να είναι άμεσα εξερευνήσιμο.
 - Η custom τιμολόγηση υπολογίζει βασική χρέωση, χιλιόμετρα, ώρες, vehicle multiplier, passenger adjustment και platform fee 18%.
-- Τα payment, maps, authentication και live tracking παραμένουν επόμενα integrations· το πρώτο build κρατά τις ροές λειτουργικές χωρίς εξωτερικά credentials.
+- Τα payments, maps και live tracking παραμένουν επόμενα integrations. Η authentication ροή χρησιμοποιεί ήδη Replit-managed Clerk, ενώ το κινητό είναι υποχρεωτικό contact field για κρατήσεις και WhatsApp/Viber links.
 
 ## Product
 

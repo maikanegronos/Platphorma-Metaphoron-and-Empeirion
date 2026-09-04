@@ -132,6 +132,7 @@ export const ListBookingsResponseItem = zod.object({
   "title": zod.string(),
   "date": zod.coerce.date(),
   "pickup": zod.string(),
+  "customerPhone": zod.string().nullable(),
   "passengers": zod.number(),
   "total": zod.number(),
   "paid": zod.number(),
@@ -146,6 +147,8 @@ export const ListBookingsResponse = zod.array(ListBookingsResponseItem)
  * @summary Create a booking
  */
 
+export const createBookingBodyCustomerPhoneMin = 8;
+
 export const createBookingBodyTotalMin = 0;
 
 
@@ -157,8 +160,12 @@ export const CreateBookingBody = zod.object({
   "date": zod.coerce.date(),
   "passengers": zod.number().min(1),
   "pickup": zod.string(),
+  "customerPhone": zod.string().min(createBookingBodyCustomerPhoneMin),
+  "time": zod.string(),
+  "destination": zod.string().optional(),
+  "vehicleType": zod.enum(['sedan', 'van', 'minibus', 'bus']).optional(),
   "total": zod.number().min(createBookingBodyTotalMin),
-  "paymentPlan": zod.enum(['deposit', 'full'])
+  "paymentPlan": zod.enum(['deposit', 'full']).optional()
 })
 
 export const CreateBookingResponse = zod.object({
@@ -166,6 +173,29 @@ export const CreateBookingResponse = zod.object({
   "title": zod.string(),
   "date": zod.coerce.date(),
   "pickup": zod.string(),
+  "customerPhone": zod.string().nullable(),
+  "passengers": zod.number(),
+  "total": zod.number(),
+  "paid": zod.number(),
+  "status": zod.enum(['confirmed', 'pending', 'in-progress', 'completed', 'cancelled']),
+  "driverName": zod.string().nullable(),
+  "vehicle": zod.string().nullable()
+})
+
+
+/**
+ * @summary Cancel a customer booking
+ */
+export const CancelBookingParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const CancelBookingResponse = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "date": zod.coerce.date(),
+  "pickup": zod.string(),
+  "customerPhone": zod.string().nullable(),
   "passengers": zod.number(),
   "total": zod.number(),
   "paid": zod.number(),
@@ -180,6 +210,7 @@ export const CreateBookingResponse = zod.object({
  */
 export const ListDriverJobsResponseItem = zod.object({
   "id": zod.string(),
+  "bookingId": zod.string().nullable(),
   "title": zod.string(),
   "date": zod.coerce.date(),
   "time": zod.string(),
@@ -189,7 +220,8 @@ export const ListDriverJobsResponseItem = zod.object({
   "vehicleType": zod.string(),
   "payout": zod.number(),
   "distanceKm": zod.number(),
-  "status": zod.enum(['open', 'claimed', 'completed']),
+  "status": zod.enum(['open', 'claimed', 'in-progress', 'completed', 'cancelled']),
+  "customerPhone": zod.string().nullable(),
   "isCustom": zod.boolean()
 })
 export const ListDriverJobsResponse = zod.array(ListDriverJobsResponseItem)
@@ -209,6 +241,7 @@ export const ClaimDriverJobBody = zod.object({
 
 export const ClaimDriverJobResponse = zod.object({
   "id": zod.string(),
+  "bookingId": zod.string().nullable(),
   "title": zod.string(),
   "date": zod.coerce.date(),
   "time": zod.string(),
@@ -218,7 +251,37 @@ export const ClaimDriverJobResponse = zod.object({
   "vehicleType": zod.string(),
   "payout": zod.number(),
   "distanceKm": zod.number(),
-  "status": zod.enum(['open', 'claimed', 'completed']),
+  "status": zod.enum(['open', 'claimed', 'in-progress', 'completed', 'cancelled']),
+  "customerPhone": zod.string().nullable(),
+  "isCustom": zod.boolean()
+})
+
+
+/**
+ * @summary Update the status of a claimed driver job
+ */
+export const UpdateDriverJobStatusParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateDriverJobStatusBody = zod.object({
+  "status": zod.enum(['in-progress', 'completed'])
+})
+
+export const UpdateDriverJobStatusResponse = zod.object({
+  "id": zod.string(),
+  "bookingId": zod.string().nullable(),
+  "title": zod.string(),
+  "date": zod.coerce.date(),
+  "time": zod.string(),
+  "pickup": zod.string(),
+  "destination": zod.string(),
+  "passengers": zod.number(),
+  "vehicleType": zod.string(),
+  "payout": zod.number(),
+  "distanceKm": zod.number(),
+  "status": zod.enum(['open', 'claimed', 'in-progress', 'completed', 'cancelled']),
+  "customerPhone": zod.string().nullable(),
   "isCustom": zod.boolean()
 })
 
@@ -236,6 +299,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "title": zod.string(),
   "date": zod.coerce.date(),
   "pickup": zod.string(),
+  "customerPhone": zod.string().nullable(),
   "passengers": zod.number(),
   "total": zod.number(),
   "paid": zod.number(),

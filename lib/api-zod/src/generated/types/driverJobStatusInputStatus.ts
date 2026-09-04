@@ -6,13 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type DriverJobStatus = typeof DriverJobStatus[keyof typeof DriverJobStatus];
+export type DriverJobStatusInputStatus = typeof DriverJobStatusInputStatus[keyof typeof DriverJobStatusInputStatus];
 
 
-export const DriverJobStatus = {
-  open: 'open',
-  claimed: 'claimed',
+export const DriverJobStatusInputStatus = {
   'in-progress': 'in-progress',
   completed: 'completed',
-  cancelled: 'cancelled',
 } as const;
