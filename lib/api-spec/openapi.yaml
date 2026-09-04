@@ -277,6 +277,22 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Driver"
+  /admin/bookings:
+    get:
+      operationId: listAdminBookings
+      tags: [admin]
+      summary: List all bookings for operations
+      security:
+        - ClerkSession: []
+      responses:
+        "200":
+          description: Booking operations queue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
   /admin/drivers/{id}/review:
     patch:
       operationId: reviewDriver
@@ -469,6 +485,7 @@ components:
         id: { type: string }
         title: { type: string }
         date: { type: string, format: date }
+        time: { type: ["string", "null"] }
         pickup: { type: string }
         customerPhone: { type: ["string", "null"] }
         passengers: { type: number }
@@ -477,7 +494,7 @@ components:
         status: { type: string, enum: [confirmed, pending, in-progress, completed, cancelled] }
         driverName: { type: ["string", "null"] }
         vehicle: { type: ["string", "null"] }
-      required: [id, title, date, pickup, customerPhone, passengers, total, paid, status, driverName, vehicle]
+      required: [id, title, date, time, pickup, customerPhone, passengers, total, paid, status, driverName, vehicle]
     DriverJob:
       type: object
       properties:

@@ -38,6 +38,7 @@ function bookingResponse(booking: typeof bookingsTable.$inferSelect) {
     id: booking.id,
     title: booking.title,
     date: booking.scheduledDate,
+    time: booking.scheduledTime,
     customerPhone: booking.customerPhone,
     pickup: booking.pickup,
     passengers: booking.passengers,
@@ -330,6 +331,14 @@ router.get("/admin/drivers", requireRole("operator"), async (_req, res): Promise
     .from(driversTable)
     .orderBy(asc(driversTable.status), asc(driversTable.name));
   res.json(ListAdminDriversResponse.parse(drivers.map(driverResponse)));
+});
+
+router.get("/admin/bookings", requireRole("operator"), async (_req, res): Promise<void> => {
+  const bookings = await db
+    .select()
+    .from(bookingsTable)
+    .orderBy(asc(bookingsTable.scheduledDate));
+  res.json(ListBookingsResponse.parse(bookings.map(bookingResponse)));
 });
 
 router.patch("/admin/drivers/:id/review", requireRole("operator"), async (req, res): Promise<void> => {

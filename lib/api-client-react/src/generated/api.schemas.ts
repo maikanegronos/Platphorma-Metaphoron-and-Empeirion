@@ -148,6 +148,8 @@ export interface Booking {
   id: string;
   title: string;
   date: string;
+  /** @nullable */
+  time: string | null;
   pickup: string;
   /** @nullable */
   customerPhone: string | null;

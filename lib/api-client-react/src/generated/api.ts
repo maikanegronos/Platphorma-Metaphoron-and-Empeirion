@@ -1121,6 +1121,83 @@ export function useListAdminDrivers<TData = Awaited<ReturnType<typeof listAdminD
 
 
 
+export const getListAdminBookingsUrl = () => {
+
+
+
+
+  return `/api/admin/bookings`
+}
+
+/**
+ * @summary List all bookings for operations
+ */
+export const listAdminBookings = async ( options?: Parameters<typeof customFetch>[1]): Promise<Booking[]> => {
+
+  return customFetch<Booking[]>(getListAdminBookingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminBookingsQueryKey = () => {
+    return [
+    `/api/admin/bookings`
+    ] as const;
+    }
+
+
+export const getListAdminBookingsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminBookings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminBookings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminBookingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminBookings>>> = ({ signal }) => listAdminBookings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminBookings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAdminBookingsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminBookings>>>
+export type ListAdminBookingsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all bookings for operations
+ */
+
+export function useListAdminBookings<TData = Awaited<ReturnType<typeof listAdminBookings>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAdminBookings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAdminBookingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getReviewDriverUrl = (id: string,) => {
 
 

@@ -131,6 +131,7 @@ export const ListBookingsResponseItem = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "date": zod.coerce.date(),
+  "time": zod.string().nullable(),
   "pickup": zod.string(),
   "customerPhone": zod.string().nullable(),
   "passengers": zod.number(),
@@ -172,6 +173,7 @@ export const CreateBookingResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "date": zod.coerce.date(),
+  "time": zod.string().nullable(),
   "pickup": zod.string(),
   "customerPhone": zod.string().nullable(),
   "passengers": zod.number(),
@@ -194,6 +196,7 @@ export const CancelBookingResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "date": zod.coerce.date(),
+  "time": zod.string().nullable(),
   "pickup": zod.string(),
   "customerPhone": zod.string().nullable(),
   "passengers": zod.number(),
@@ -298,6 +301,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "id": zod.string(),
   "title": zod.string(),
   "date": zod.coerce.date(),
+  "time": zod.string().nullable(),
   "pickup": zod.string(),
   "customerPhone": zod.string().nullable(),
   "passengers": zod.number(),
@@ -325,6 +329,26 @@ export const ListAdminDriversResponseItem = zod.object({
   "documents": zod.number()
 })
 export const ListAdminDriversResponse = zod.array(ListAdminDriversResponseItem)
+
+
+/**
+ * @summary List all bookings for operations
+ */
+export const ListAdminBookingsResponseItem = zod.object({
+  "id": zod.string(),
+  "title": zod.string(),
+  "date": zod.coerce.date(),
+  "time": zod.string().nullable(),
+  "pickup": zod.string(),
+  "customerPhone": zod.string().nullable(),
+  "passengers": zod.number(),
+  "total": zod.number(),
+  "paid": zod.number(),
+  "status": zod.enum(['confirmed', 'pending', 'in-progress', 'completed', 'cancelled']),
+  "driverName": zod.string().nullable(),
+  "vehicle": zod.string().nullable()
+})
+export const ListAdminBookingsResponse = zod.array(ListAdminBookingsResponseItem)
 
 
 /**

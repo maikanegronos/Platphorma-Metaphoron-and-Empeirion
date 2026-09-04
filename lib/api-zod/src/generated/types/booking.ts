@@ -11,6 +11,8 @@ export interface Booking {
   id: string;
   title: string;
   date: Date;
+  /** @nullable */
+  time: string | null;
   pickup: string;
   /** @nullable */
   customerPhone: string | null;
