@@ -1,10 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useUser } from '@clerk/react';
-import { ArrowRight, CarFront, CheckCircle2, Clock3, MapPin, MessageCircle, Navigation, Phone, RefreshCcw, Route, Users } from 'lucide-react';
-import { getListDriverJobsQueryKey, useClaimDriverJob, useListDriverJobs, useUpdateDriverJobStatus } from '@workspace/api-client-react';
+import { ArrowRight, CarFront, CheckCircle2, Clock3, FileText, MapPin, MessageCircle, Navigation, Phone, RefreshCcw, Route, UploadCloud, Users } from 'lucide-react';
+import { getListDriverJobsQueryKey, useClaimDriverJob, useCreateDriverDocument, useListDriverJobs, useRequestUploadUrl, useUpdateDriverJobStatus } from '@workspace/api-client-react';
 import type { DriverJob } from '@workspace/api-client-react';
 import { ActionButton, DataTag, EmptyState, ErrorState, formatDate, formatEuro, LoadingState, PageIntro, StatusPill, SuccessNotice } from '@/components/travel-ui';
 import { useQueryClient } from '@tanstack/react-query';
+
+const ALLOWED_DOCUMENT_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png']);
+const MAX_DOCUMENT_SIZE = 10 * 1024 * 1024;
+
+type UploadedDocument = { id: string; fileName: string; status: 'pending' | 'approved' | 'rejected' };
 
 export default function Driver() {
   const { user } = useUser();
@@ -15,6 +20,42 @@ export default function Driver() {
   const [vehicle, setVehicle] = useState('Mercedes V-Class · ΙΝΧ 4821');
   const [claimedId, setClaimedId] = useState<string | null>(null);
   const [unavailable, setUnavailable] = useState<string | null>(null);
+  const requestUploadUrl = useRequestUploadUrl();
+  const createDocument = useCreateDriverDocument();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const onFileSelected = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadError(null);
+    if (!ALLOWED_DOCUMENT_TYPES.has(file.type)) {
+      setUploadError('Επιτρέπονται μόνο αρχεία PDF, JPG ή PNG.');
+      return;
+    }
+    if (file.size > MAX_DOCUMENT_SIZE) {
+      setUploadError('Το αρχείο δεν πρέπει να ξεπερνά τα 10MB.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const { uploadURL, objectPath } = await requestUploadUrl.mutateAsync({
+        data: { name: file.name, size: file.size, contentType: file.type },
+      });
+      const putResponse = await fetch(uploadURL, { method: 'PUT', body: file, headers: { 'Content-Type': file.type } });
+      if (!putResponse.ok) throw new Error('upload-failed');
+      const document = await createDocument.mutateAsync({
+        data: { objectPath, fileName: file.name, contentType: file.type, size: file.size },
+      });
+      setUploadedDocuments((prev) => [{ id: document.id, fileName: document.fileName, status: document.status }, ...prev]);
+    } catch {
+      setUploadError('Το αρχείο δεν στάλθηκε. Δοκίμασε ξανά.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
   const openJobs = useMemo(() => (jobs.data ?? []).filter((job) => job.status === 'open'), [jobs.data]);
   const myJobs = useMemo(() => (jobs.data ?? []).filter((job) => job.status !== 'open'), [jobs.data]);
   const onClaim = (job: DriverJob) => { if (!user) return; setUnavailable(null); claim.mutate({ id: job.id, data: { driverId: user.id, vehicle } }, { onSuccess: () => { setClaimedId(job.id); queryClient.invalidateQueries({ queryKey: getListDriverJobsQueryKey() }); }, onError: () => setUnavailable(job.id) }); };
@@ -23,7 +64,27 @@ export default function Driver() {
       onSuccess: () => queryClient.invalidateQueries({ queryKey: getListDriverJobsQueryKey() }),
     });
   };
-  return <div className="min-h-[calc(100dvh-72px)] bg-[#e8edf0] px-5 py-8 md:px-10 md:py-12"><div className="mx-auto max-w-[1280px]"><PageIntro eyebrow="Dispatch / Οδηγός" title="Δούλεψε με τον δικό σου ρυθμό." detail="Οι ανοιχτές διαδρομές της ημέρας, με τα απαραίτητα στοιχεία για να αποφασίσεις γρήγορα και σωστά." action={<div className="flex items-center gap-2 rounded-xl border border-[#bfd0d5] bg-[#f6f7f6] px-3 py-2 text-xs"><span className="h-2 w-2 rounded-full bg-[#54a47d]" /> Συνδεδεμένος οδηγός</div>} /><div className="mb-6 flex flex-col gap-4 rounded-2xl border border-[#c5d4d8] bg-[#f6f7f6] p-4 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground"><CarFront size={20} /></div><div><p className="text-sm font-bold text-primary">{user?.fullName ?? 'Ο οδηγός σου'}</p><p className="text-xs text-muted-foreground">Αθήνα · 4.92 αξιολόγηση · 186 διαδρομές</p></div></div><label className="flex items-center gap-3 text-xs text-muted-foreground"><span>Ενεργό όχημα</span><select data-testid="select-driver-vehicle" value={vehicle} onChange={(e) => setVehicle(e.target.value)} className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-primary"><option>Mercedes V-Class · ΙΝΧ 4821</option><option>Toyota Corolla · ΙΝΧ 3180</option><option>Ford Transit · ΙΝΧ 9032</option></select></label></div>{claimedId && <div className="mb-5"><SuccessNotice>Η διαδρομή ανατέθηκε στο όχημά σου. Άνοιξε το πρόγραμμα για τις λεπτομέρειες παραλαβής.</SuccessNotice></div>}{unavailable && <div className="mb-5 rounded-2xl border border-[#e5b2aa] bg-[#fff3f0] p-4 text-sm text-[#733b35]" data-testid="notice-job-unavailable">Η διαδρομή μόλις ανατέθηκε σε άλλον οδηγό. Ανανεώσαμε τη λίστα για να δεις τις διαθέσιμες επιλογές.</div>}<div className="mb-5 flex items-center justify-between"><div><h2 className="font-display text-3xl text-primary">Ανοιχτές διαδρομές</h2><p className="mt-1 text-xs text-muted-foreground">{openJobs.length} επιλογές κοντά σου</p></div><button data-testid="button-refresh-jobs" onClick={() => jobs.refetch()} className="inline-flex items-center gap-2 rounded-xl border border-[#bfd0d5] bg-[#f6f7f6] px-3 py-2 text-xs font-bold text-primary hover:border-primary"><RefreshCcw size={14} /> Ανανέωση</button></div>{jobs.isLoading ? <LoadingState label="Αναζητούμε τις επόμενες διαδρομές…" /> : jobs.isError ? <ErrorState onRetry={() => jobs.refetch()} label="Η λίστα dispatch δεν είναι διαθέσιμη." /> : <><div className="grid gap-4 xl:grid-cols-2">{openJobs.map((job) => <JobCard key={job.id} job={job} pending={claim.isPending} claimed={claimedId === job.id} onClaim={() => onClaim(job)} onStatus={onStatus} statusPending={updateStatus.isPending} />)}</div>{myJobs.length > 0 && <section className="mt-10"><h2 className="mb-4 font-display text-3xl text-primary">Το πρόγραμμά μου</h2><div className="grid gap-4 xl:grid-cols-2">{myJobs.map((job) => <JobCard key={job.id} job={job} pending={false} claimed onClaim={() => undefined} onStatus={onStatus} statusPending={updateStatus.isPending} />)}</div></section>}{openJobs.length === 0 && myJobs.length === 0 && <EmptyState title="Δεν υπάρχει διαδρομή." detail="Όταν προκύψει νέα διαδρομή στην περιοχή σου, θα εμφανιστεί εδώ." action={<button data-testid="button-empty-refresh" onClick={() => jobs.refetch()} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">Έλεγχος ξανά</button>} />}</>}</div></div>;
+  return <div className="min-h-[calc(100dvh-72px)] bg-[#e8edf0] px-5 py-8 md:px-10 md:py-12"><div className="mx-auto max-w-[1280px]"><PageIntro eyebrow="Dispatch / Οδηγός" title="Δούλεψε με τον δικό σου ρυθμό." detail="Οι ανοιχτές διαδρομές της ημέρας, με τα απαραίτητα στοιχεία για να αποφασίσεις γρήγορα και σωστά." action={<div className="flex items-center gap-2 rounded-xl border border-[#bfd0d5] bg-[#f6f7f6] px-3 py-2 text-xs"><span className="h-2 w-2 rounded-full bg-[#54a47d]" /> Συνδεδεμένος οδηγός</div>} /><div className="mb-6 flex flex-col gap-4 rounded-2xl border border-[#c5d4d8] bg-[#f6f7f6] p-4 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground"><CarFront size={20} /></div><div><p className="text-sm font-bold text-primary">{user?.fullName ?? 'Ο οδηγός σου'}</p><p className="text-xs text-muted-foreground">Αθήνα · 4.92 αξιολόγηση · 186 διαδρομές</p></div></div><label className="flex items-center gap-3 text-xs text-muted-foreground"><span>Ενεργό όχημα</span><select data-testid="select-driver-vehicle" value={vehicle} onChange={(e) => setVehicle(e.target.value)} className="rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-primary"><option>Mercedes V-Class · ΙΝΧ 4821</option><option>Toyota Corolla · ΙΝΧ 3180</option><option>Ford Transit · ΙΝΧ 9032</option></select></label></div>
+<div className="mb-6 rounded-2xl border border-[#c5d4d8] bg-[#f6f7f6] p-5" data-testid="section-driver-documents">
+  <div className="mb-3 flex items-center gap-2 text-primary"><FileText size={18} /><h3 className="font-display text-xl">Έγγραφα οδηγού</h3></div>
+  <p className="mb-4 text-xs text-muted-foreground">Ανέβασε άδεια οδήγησης, άδεια κυκλοφορίας ή ασφάλιση (PDF, JPG ή PNG, έως 10MB) για έλεγχο από τον operator.</p>
+  <input ref={fileInputRef} type="file" accept="application/pdf,image/jpeg,image/png" className="hidden" data-testid="input-driver-document" onChange={(e) => onFileSelected(e.target.files?.[0])} />
+  <button type="button" data-testid="button-upload-document" disabled={uploading} onClick={() => fileInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground disabled:opacity-60">
+    <UploadCloud size={16} /> {uploading ? 'Αποστολή…' : 'Ανέβασμα εγγράφου'}
+  </button>
+  {uploadError && <p className="mt-3 text-sm font-semibold text-[#a24d43]" data-testid="text-upload-error">{uploadError}</p>}
+  {uploadedDocuments.length > 0 && (
+    <ul className="mt-4 space-y-2">
+      {uploadedDocuments.map((doc) => (
+        <li key={doc.id} className="flex items-center justify-between rounded-xl bg-card px-3 py-2 text-sm" data-testid={`row-uploaded-document-${doc.id}`}>
+          <span className="truncate pr-3 text-primary">{doc.fileName}</span>
+          <StatusPill status={doc.status} />
+        </li>
+      ))}
+    </ul>
+  )}
+</div>
+{claimedId && <div className="mb-5"><SuccessNotice>Η διαδρομή ανατέθηκε στο όχημά σου. Άνοιξε το πρόγραμμα για τις λεπτομέρειες παραλαβής.</SuccessNotice></div>}{unavailable && <div className="mb-5 rounded-2xl border border-[#e5b2aa] bg-[#fff3f0] p-4 text-sm text-[#733b35]" data-testid="notice-job-unavailable">Η διαδρομή μόλις ανατέθηκε σε άλλον οδηγό. Ανανεώσαμε τη λίστα για να δεις τις διαθέσιμες επιλογές.</div>}<div className="mb-5 flex items-center justify-between"><div><h2 className="font-display text-3xl text-primary">Ανοιχτές διαδρομές</h2><p className="mt-1 text-xs text-muted-foreground">{openJobs.length} επιλογές κοντά σου</p></div><button data-testid="button-refresh-jobs" onClick={() => jobs.refetch()} className="inline-flex items-center gap-2 rounded-xl border border-[#bfd0d5] bg-[#f6f7f6] px-3 py-2 text-xs font-bold text-primary hover:border-primary"><RefreshCcw size={14} /> Ανανέωση</button></div>{jobs.isLoading ? <LoadingState label="Αναζητούμε τις επόμενες διαδρομές…" /> : jobs.isError ? <ErrorState onRetry={() => jobs.refetch()} label="Η λίστα dispatch δεν είναι διαθέσιμη." /> : <><div className="grid gap-4 xl:grid-cols-2">{openJobs.map((job) => <JobCard key={job.id} job={job} pending={claim.isPending} claimed={claimedId === job.id} onClaim={() => onClaim(job)} onStatus={onStatus} statusPending={updateStatus.isPending} />)}</div>{myJobs.length > 0 && <section className="mt-10"><h2 className="mb-4 font-display text-3xl text-primary">Το πρόγραμμά μου</h2><div className="grid gap-4 xl:grid-cols-2">{myJobs.map((job) => <JobCard key={job.id} job={job} pending={false} claimed onClaim={() => undefined} onStatus={onStatus} statusPending={updateStatus.isPending} />)}</div></section>}{openJobs.length === 0 && myJobs.length === 0 && <EmptyState title="Δεν υπάρχει διαδρομή." detail="Όταν προκύψει νέα διαδρομή στην περιοχή σου, θα εμφανιστεί εδώ." action={<button data-testid="button-empty-refresh" onClick={() => jobs.refetch()} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground">Έλεγχος ξανά</button>} />}</>}</div></div>;
 }
 
 function JobCard({ job, onClaim, onStatus, pending, statusPending, claimed }: { job: DriverJob; onClaim: () => void; onStatus: (job: DriverJob, status: 'in-progress' | 'completed') => void; pending: boolean; statusPending: boolean; claimed: boolean }) {
