@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, or } from "drizzle-orm";
+import { and, asc, desc, eq, or, sql } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
+import { clerkClient } from "@clerk/express";
 import {
   ClaimDriverJobBody,
   ClaimDriverJobParams,
@@ -75,6 +76,47 @@ function driverJobResponse(job: typeof driverJobsTable.$inferSelect) {
     isCustom: Boolean(job.isCustom),
     customerPhone: job.customerPhone,
   };
+}
+
+function driverDocumentResponse(document: typeof driverDocumentsTable.$inferSelect) {
+  return {
+    id: document.id,
+    driverId: document.driverId,
+    objectPath: document.objectPath,
+    fileName: document.fileName,
+    contentType: document.contentType,
+    size: document.size,
+    status: document.status,
+    createdAt: document.createdAt,
+  };
+}
+
+async function ensureDriverProfile(userId: string): Promise<void> {
+  const [existing] = await db.select({ id: driversTable.id }).from(driversTable).where(eq(driversTable.id, userId));
+  if (existing) return;
+
+  let name = "Νέος οδηγός";
+  try {
+    const user = await clerkClient.users.getUser(userId);
+    name = [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || name;
+  } catch {
+    // Clerk lookup is best-effort; fall back to the default name below.
+  }
+
+  await db
+    .insert(driversTable)
+    .values({
+      id: userId,
+      name,
+      city: "—",
+      vehicle: "—",
+      vehicleType: "—",
+      rating: 0,
+      trips: 0,
+      status: "pending",
+      documents: 0,
+    })
+    .onConflictDoNothing();
 }
 
 function driverResponse(driver: typeof driversTable.$inferSelect) {
@@ -372,6 +414,73 @@ router.patch("/admin/drivers/:id/review", requireRole("operator"), async (req, r
   }
 
   res.json(ReviewDriverResponse.parse(driverResponse(driver)));
+});
+
+router.post("/driver/documents", requireRole("driver"), async (req, res): Promise<void> => {
+  const body = CreateDriverDocumentBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  await ensureDriverProfile(req.userId!);
+
+  const [document] = await db.transaction(async (tx) => {
+    const [createdDocument] = await tx
+      .insert(driverDocumentsTable)
+      .values({
+        id: randomUUID(),
+        driverId: req.userId!,
+        objectPath: body.data.objectPath,
+        fileName: body.data.fileName,
+        contentType: body.data.contentType,
+        size: Math.round(body.data.size),
+        status: "pending",
+      })
+      .returning();
+
+    await tx
+      .update(driversTable)
+      .set({ documents: sql`${driversTable.documents} + 1` })
+      .where(eq(driversTable.id, req.userId!));
+
+    return [createdDocument];
+  });
+
+  res.status(201).json(CreateDriverDocumentResponse.parse(driverDocumentResponse(document)));
+});
+
+router.get("/admin/driver-documents", requireRole("operator"), async (_req, res): Promise<void> => {
+  const documents = await db
+    .select()
+    .from(driverDocumentsTable)
+    .orderBy(desc(driverDocumentsTable.createdAt));
+  res.json(ListAdminDriverDocumentsResponse.parse(documents.map(driverDocumentResponse)));
+});
+
+router.patch("/admin/driver-documents/:id/review", requireRole("operator"), async (req, res): Promise<void> => {
+  const params = ReviewDriverDocumentParams.safeParse(req.params);
+  const body = ReviewDriverDocumentBody.safeParse(req.body);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [document] = await db
+    .update(driverDocumentsTable)
+    .set({ status: body.data.status })
+    .where(eq(driverDocumentsTable.id, params.data.id))
+    .returning();
+  if (!document) {
+    res.status(404).json({ error: "Το έγγραφο δεν βρέθηκε." });
+    return;
+  }
+
+  res.json(ReviewDriverDocumentResponse.parse(driverDocumentResponse(document)));
 });
 
 export default router;
