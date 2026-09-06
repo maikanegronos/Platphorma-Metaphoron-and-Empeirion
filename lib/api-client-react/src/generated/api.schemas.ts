@@ -123,6 +123,7 @@ export interface BookingInput {
   /** @minimum 1 */
   passengers: number;
   pickup: string;
+  stops?: string[];
   /** @minLength 8 */
   customerPhone: string;
   time: string;
@@ -151,6 +152,7 @@ export interface Booking {
   /** @nullable */
   time: string | null;
   pickup: string;
+  stops: string[];
   /** @nullable */
   customerPhone: string | null;
   passengers: number;
@@ -183,6 +185,7 @@ export interface DriverJob {
   time: string;
   pickup: string;
   destination: string;
+  stops: string[];
   passengers: number;
   vehicleType: string;
   payout: number;
@@ -328,4 +331,3 @@ export type NotFoundResponse = Error;
 export type ListBookingsParams = {
 customerId?: string;
 };
-
