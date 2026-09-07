@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { Link } from 'wouter';
-import { useAuth, useUser } from '@clerk/react';
+import { useUser } from '@clerk/react';
 import { ArrowRight, ArrowUpRight, CalendarDays, ChevronRight, Clock3, SlidersHorizontal, Star, Users } from 'lucide-react';
 import { useCreateBooking, useCreateQuote, useGetExperience, useListExperiences, getGetExperienceQueryKey, getListExperiencesQueryKey, getListBookingsQueryKey, getGetDashboardSummaryQueryKey } from '@workspace/api-client-react';
 import type { Experience, Quote, QuoteInput } from '@workspace/api-client-react';
@@ -13,6 +13,7 @@ type BookingSelection = Experience & {
   bookingTime: string;
   bookingPassengers: number;
   bookingPickup: string;
+  bookingStops: string[];
 };
 
 function formatBookingDate(value: string) {
@@ -39,10 +40,14 @@ function ExperienceCard({ experience, onBook }: { experience: Experience; onBook
 
 function QuotePanel({ onQuote }: { onQuote: (quote: Quote, input: QuoteInput) => void }) {
   const createQuote = useCreateQuote();
-  const [form, setForm] = useState({ pickup: 'Ξενοδοχείο Ακτή, Αθήνα', stops: 'Ναύπλιο', date: '2026-09-15', startTime: '09:30', durationHours: '8', passengers: '4', vehicleType: 'van' as QuoteInput['vehicleType'] });
+  const [form, setForm] = useState({ pickup: 'Ξενοδοχείο Ακτή, Αθήνα', date: '2026-09-15', startTime: '09:30', durationHours: '8', passengers: '4', vehicleType: 'van' as QuoteInput['vehicleType'] });
+  const [stops, setStops] = useState<string[]>(['Ναύπλιο']);
+  const updateStop = (index: number, value: string) => setStops((prev) => prev.map((stop, i) => (i === index ? value : stop)));
+  const addStop = () => setStops((prev) => [...prev, '']);
+  const removeStop = (index: number) => setStops((prev) => prev.filter((_, i) => i !== index));
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    const input: QuoteInput = { ...form, stops: form.stops ? form.stops.split(',').map((s) => s.trim()) : [], durationHours: Number(form.durationHours), passengers: Number(form.passengers) };
+    const input: QuoteInput = { ...form, stops: stops.map((s) => s.trim()).filter(Boolean), durationHours: Number(form.durationHours), passengers: Number(form.passengers) };
     createQuote.mutate({ data: input }, { onSuccess: (quote) => onQuote(quote, input) });
   };
   return (
@@ -50,7 +55,18 @@ function QuotePanel({ onQuote }: { onQuote: (quote: Quote, input: QuoteInput) =>
       <div className="flex items-start justify-between gap-4"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Φτιάξε τη δική σου μέρα</p><h2 className="mt-2 font-display text-3xl leading-tight">Από πόρτα σε πόρτα,<br />χωρίς πρόγραμμα-παζλ.</h2></div><SlidersHorizontal className="text-accent" /></div>
       <div className="mt-7 grid gap-4 sm:grid-cols-2">
         <label className="sm:col-span-2"><span className="field-label">Σημείο παραλαβής</span><input data-testid="input-quote-pickup" required value={form.pickup} onChange={(e) => setForm({ ...form, pickup: e.target.value })} className="field-dark" /></label>
-        <label><span className="field-label">Στάσεις</span><input data-testid="input-quote-stops" placeholder="π.χ. Αίγινα, Σούνιο" value={form.stops} onChange={(e) => setForm({ ...form, stops: e.target.value })} className="field-dark" /></label>
+        <div className="sm:col-span-2">
+          <span className="field-label">Στάσεις / προορισμός</span>
+          <div className="mt-1 space-y-2">
+            {stops.map((stop, index) => (
+              <div key={index} className="flex gap-2">
+                <input data-testid={`input-quote-stop-${index}`} placeholder={index === stops.length - 1 ? 'Τελικός προορισμός' : `Στάση ${index + 1}`} value={stop} onChange={(e) => updateStop(index, e.target.value)} className="field-dark flex-1" />
+                {stops.length > 1 && <button type="button" data-testid={`button-remove-stop-${index}`} onClick={() => removeStop(index)} className="rounded-xl border border-white/20 px-3 text-sm text-primary-foreground/80 hover:bg-white/10">×</button>}
+              </div>
+            ))}
+          </div>
+          <button type="button" data-testid="button-add-stop" onClick={addStop} className="mt-2 text-xs font-bold text-accent hover:underline">+ Προσθήκη στάσης</button>
+        </div>
         <label><span className="field-label">Ημερομηνία</span><input data-testid="input-quote-date" type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="field-dark" /></label>
         <label><span className="field-label">Ώρα εκκίνησης</span><input data-testid="input-quote-time" type="time" required value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} className="field-dark" /></label>
         <label><span className="field-label">Διάρκεια</span><select data-testid="select-quote-duration" value={form.durationHours} onChange={(e) => setForm({ ...form, durationHours: e.target.value })} className="field-dark"><option value="4">4 ώρες</option><option value="6">6 ώρες</option><option value="8">8 ώρες</option><option value="10">10 ώρες</option></select></label>
@@ -64,7 +80,6 @@ function QuotePanel({ onQuote }: { onQuote: (quote: Quote, input: QuoteInput) =>
 }
 
 export default function Home() {
-  const { isLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
   const { data: experiences, isLoading, isError, refetch } = useListExperiences({ query: { queryKey: getListExperiencesQueryKey(), staleTime: 300_000 } });
   const createBooking = useCreateBooking();
@@ -72,6 +87,7 @@ export default function Home() {
   const [quote, setQuote] = useState<{ result: Quote; input: QuoteInput } | null>(null);
   const [selected, setSelected] = useState<BookingSelection | null>(null);
   const [bookingDone, setBookingDone] = useState(false);
+  const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [category, setCategory] = useState('Όλα');
   const categories = useMemo(() => ['Όλα', ...Array.from(new Set((experiences ?? []).map((e) => e.category)))], [experiences]);
@@ -79,36 +95,37 @@ export default function Home() {
   const visible = (experiences ?? []).filter((e) => category === 'Όλα' || e.category === category);
 
   const bookExperience = (experience: Experience) => {
-    if (!isLoaded || !isSignedIn) {
-      window.location.assign(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/sign-in`);
-      return;
-    }
-    setSelected({ ...experience, bookingDate: '2026-09-15', bookingTime: '09:30', bookingPassengers: 2, bookingPickup: 'Ξενοδοχείο Ακτή, Αθήνα' });
+    setSelected({ ...experience, bookingDate: '2026-09-15', bookingTime: '09:30', bookingPassengers: 2, bookingPickup: 'Ξενοδοχείο Ακτή, Αθήνα', bookingStops: [] });
+    setCustomerName(user?.fullName ?? '');
     setCustomerPhone(user?.primaryPhoneNumber?.phoneNumber ?? '');
     setBookingDone(false);
   };
 
   const submitBooking = () => {
-    if (!selected || !user) return;
+    if (!selected) return;
     const active = selectedDetails.data ?? selected;
     createBooking.mutate({
       data: {
-        customerId: user.id,
+        customerId: user?.id,
         experienceId: active.id || undefined,
         title: active.title,
         date: selected.bookingDate,
         time: selected.bookingTime,
         passengers: selected.bookingPassengers,
         pickup: selected.bookingPickup,
+        stops: selected.bookingStops,
+        customerName,
         customerPhone,
-        destination: active.location,
+        destination: selected.bookingStops[selected.bookingStops.length - 1] ?? active.location,
         vehicleType: 'van',
         total: active.priceFrom,
       },
     }, {
       onSuccess: () => {
         setBookingDone(true);
-         queryClient.invalidateQueries({ queryKey: getListBookingsQueryKey({ customerId: user.id }) });
+        if (user) {
+          queryClient.invalidateQueries({ queryKey: getListBookingsQueryKey({ customerId: user.id }) });
+        }
         queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
       },
     });
@@ -135,9 +152,9 @@ export default function Home() {
         </div>
       </section>
 
-       {quote && <div className="fixed inset-0 z-50 grid place-items-center bg-primary/50 p-5 backdrop-blur-sm"><div className="w-full max-w-lg rounded-3xl bg-card p-7 shadow-2xl" data-testid="dialog-quote-result"><div className="flex items-start justify-between"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Η εκτίμησή σου</p><h2 className="mt-2 font-display text-4xl text-primary">{formatEuro(quote.result.total)}</h2><p className="mt-1 text-sm text-muted-foreground">{quote.result.distanceKm} χλμ · {quote.result.durationHours} ώρες · {quote.input.passengers} άτομα</p></div><button data-testid="button-close-quote" onClick={() => setQuote(null)} className="text-muted-foreground hover:text-primary">×</button></div><div className="mt-6 space-y-3 border-y border-border py-5">{quote.result.breakdown.map((line) => <div key={line.label} className="flex justify-between text-sm"><span className="text-muted-foreground">{line.label}</span><span className="font-semibold">{formatEuro(line.amount)}</span></div>)}<div className="flex justify-between pt-2 text-sm font-bold text-primary"><span>Προκαταβολή</span><span>{formatEuro(quote.result.deposit)}</span></div></div><ActionButton data-testid="button-quote-book" onClick={() => { if (!isSignedIn) { window.location.assign(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/sign-in`); return; } setQuote(null); setSelected({ id: '', title: `Custom διαδρομή · ${quote.input.pickup}`, location: quote.input.stops[quote.input.stops.length - 1] ?? quote.input.pickup, durationHours: quote.result.durationHours, priceFrom: quote.result.total, category: 'Custom', description: '', imageUrl: '', highlights: [], rating: 0, reviewCount: 0, bookingDate: quote.input.date, bookingTime: quote.input.startTime, bookingPassengers: quote.input.passengers, bookingPickup: quote.input.pickup }); setCustomerPhone(user?.primaryPhoneNumber?.phoneNumber ?? ''); setBookingDone(false); }}>{isSignedIn ? 'Συνέχισε στην κράτηση' : 'Συνδέσου για κράτηση'} <ArrowRight size={16} /></ActionButton></div></div>}
+       {quote && <div className="fixed inset-0 z-50 grid place-items-center bg-primary/50 p-5 backdrop-blur-sm"><div className="w-full max-w-lg rounded-3xl bg-card p-7 shadow-2xl" data-testid="dialog-quote-result"><div className="flex items-start justify-between"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Η εκτίμησή σου</p><h2 className="mt-2 font-display text-4xl text-primary">{formatEuro(quote.result.total)}</h2><p className="mt-1 text-sm text-muted-foreground">{quote.result.distanceKm} χλμ · {quote.result.durationHours} ώρες · {quote.input.passengers} άτομα</p></div><button data-testid="button-close-quote" onClick={() => setQuote(null)} className="text-muted-foreground hover:text-primary">×</button></div><div className="mt-6 space-y-3 border-y border-border py-5">{quote.result.breakdown.map((line) => <div key={line.label} className="flex justify-between text-sm"><span className="text-muted-foreground">{line.label}</span><span className="font-semibold">{formatEuro(line.amount)}</span></div>)}<div className="flex justify-between pt-2 text-sm font-bold text-primary"><span>Προκαταβολή</span><span>{formatEuro(quote.result.deposit)}</span></div></div><ActionButton data-testid="button-quote-book" onClick={() => { setQuote(null); setSelected({ id: '', title: `Custom διαδρομή · ${quote.input.pickup}`, location: quote.input.stops[quote.input.stops.length - 1] ?? quote.input.pickup, durationHours: quote.result.durationHours, priceFrom: quote.result.total, category: 'Custom', description: '', imageUrl: '', highlights: [], rating: 0, reviewCount: 0, bookingDate: quote.input.date, bookingTime: quote.input.startTime, bookingPassengers: quote.input.passengers, bookingPickup: quote.input.pickup, bookingStops: quote.input.stops }); setCustomerName(user?.fullName ?? ''); setCustomerPhone(user?.primaryPhoneNumber?.phoneNumber ?? ''); setBookingDone(false); }}>Συνέχισε στην κράτηση <ArrowRight size={16} /></ActionButton></div></div>}
 
-       {selected && <div className="fixed inset-0 z-50 grid place-items-center bg-primary/50 p-5 backdrop-blur-sm"><div className="w-full max-w-md rounded-3xl bg-card p-7 shadow-2xl" data-testid="dialog-booking"><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Τελικό βήμα</p><h2 className="mt-2 font-display text-3xl text-primary">{selected.title}</h2>{bookingDone ? <div className="mt-6"><SuccessNotice>Το αίτημα κράτησης καταχωρήθηκε. Θα ενημερωθείς στο κινητό σου όταν ανατεθεί οδηγός.</SuccessNotice><Link href="/bookings" data-testid="link-view-bookings" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary">Δες τις κρατήσεις <ChevronRight size={15} /></Link></div> : <><div className="mt-5 space-y-3 rounded-2xl bg-muted/60 p-4 text-sm"><DataTag icon={CalendarDays}>{formatBookingDate(selected.bookingDate)} · {selected.bookingTime}</DataTag><DataTag icon={Users}>{selected.bookingPassengers} επιβάτες</DataTag><DataTag icon={Clock3}>{selected.bookingPickup}</DataTag><div className="flex justify-between border-t border-border pt-3"><span className="text-muted-foreground">Σύνολο</span><strong>{formatEuro(selected.priceFrom)}</strong></div></div><label className="mt-4 block"><span className="field-label">Κινητό για WhatsApp / Viber</span><input data-testid="input-booking-phone" type="tel" required value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="+30 69X XXX XXXX" className="field-light" /></label><p className="mt-3 text-xs leading-5 text-muted-foreground">Η πληρωμή θα προστεθεί σε επόμενο βήμα. Προς το παρόν κρατάμε το αίτημά σου και τα στοιχεία επικοινωνίας.</p><ActionButton data-testid="button-confirm-booking" onClick={submitBooking} loading={createBooking.isPending} className="mt-5 w-full">Καταχώρησε αίτημα κράτησης <ArrowRight size={16} /></ActionButton>{createBooking.isError && <p className="mt-3 text-xs text-[#b24d42]" data-testid="text-booking-error">Η κράτηση δεν ολοκληρώθηκε. Έλεγξε το κινητό σου και προσπάθησε ξανά.</p>}<button data-testid="button-cancel-booking" onClick={() => setSelected(null)} className="mt-3 w-full py-2 text-sm text-muted-foreground hover:text-primary">Πίσω</button></>}</div></div>}
+       {selected && <div className="fixed inset-0 z-50 grid place-items-center bg-primary/50 p-5 backdrop-blur-sm"><div className="w-full max-w-md rounded-3xl bg-card p-7 shadow-2xl" data-testid="dialog-booking"><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Τελικό βήμα</p><h2 className="mt-2 font-display text-3xl text-primary">{selected.title}</h2>{bookingDone ? <div className="mt-6"><SuccessNotice>Το αίτημα κράτησης καταχωρήθηκε. Θα ενημερωθείς στο κινητό σου όταν ανατεθεί οδηγός.</SuccessNotice>{user ? <Link href="/bookings" data-testid="link-view-bookings" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary">Δες τις κρατήσεις <ChevronRight size={15} /></Link> : <p className="mt-5 text-xs leading-5 text-muted-foreground">Κράτησες ως επισκέπτης, οπότε δεν κρατάμε ιστορικό κρατήσεων. Αν θες να βλέπεις τις επόμενες κρατήσεις σου, <Link href="/sign-in" className="font-bold text-primary underline">συνδέσου ή δημιούργησε λογαριασμό</Link>.</p>}</div> : <><div className="mt-5 space-y-3 rounded-2xl bg-muted/60 p-4 text-sm"><DataTag icon={CalendarDays}>{formatBookingDate(selected.bookingDate)} · {selected.bookingTime}</DataTag><DataTag icon={Users}>{selected.bookingPassengers} επιβάτες</DataTag><DataTag icon={Clock3}>{selected.bookingPickup}</DataTag>{selected.bookingStops.length > 0 && <DataTag icon={ChevronRight}>{selected.bookingStops.join(' → ')}</DataTag>}<div className="flex justify-between border-t border-border pt-3"><span className="text-muted-foreground">Σύνολο</span><strong>{formatEuro(selected.priceFrom)}</strong></div></div>{!user && <label className="mt-4 block"><span className="field-label">Ονοματεπώνυμο</span><input data-testid="input-booking-name" required value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="π.χ. Μαρία Παπαδοπούλου" className="field-light" /></label>}<label className="mt-4 block"><span className="field-label">Κινητό για WhatsApp / Viber</span><input data-testid="input-booking-phone" type="tel" required value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="+30 69X XXX XXXX" className="field-light" /></label><p className="mt-3 text-xs leading-5 text-muted-foreground">Η πληρωμή θα προστεθεί σε επόμενο βήμα. Προς το παρόν κρατάμε το αίτημά σου και τα στοιχεία επικοινωνίας. {!user && 'Κάνεις κράτηση ως επισκέπτης — χωρίς λογαριασμό δεν θα μπορείς να δεις ιστορικό κρατήσεων αργότερα.'}</p><ActionButton data-testid="button-confirm-booking" onClick={submitBooking} loading={createBooking.isPending} className="mt-5 w-full">Καταχώρησε αίτημα κράτησης <ArrowRight size={16} /></ActionButton>{createBooking.isError && <p className="mt-3 text-xs text-[#b24d42]" data-testid="text-booking-error">Η κράτηση δεν ολοκληρώθηκε. Έλεγξε τα στοιχεία σου και προσπάθησε ξανά.</p>}<button data-testid="button-cancel-booking" onClick={() => setSelected(null)} className="mt-3 w-full py-2 text-sm text-muted-foreground hover:text-primary">Πίσω</button></>}</div></div>}
     </div>
   );
 }

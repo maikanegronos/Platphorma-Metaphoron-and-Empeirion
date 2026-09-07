@@ -116,13 +116,16 @@ export const BookingInputPaymentPlan = {
 } as const;
 
 export interface BookingInput {
-  customerId: string;
+  customerId?: string;
   experienceId?: string;
   title: string;
   date: string;
   /** @minimum 1 */
   passengers: number;
   pickup: string;
+  stops?: string[];
+  /** @minLength 1 */
+  customerName: string;
   /** @minLength 8 */
   customerPhone: string;
   time: string;
@@ -151,6 +154,9 @@ export interface Booking {
   /** @nullable */
   time: string | null;
   pickup: string;
+  stops: string[];
+  /** @nullable */
+  customerName: string | null;
   /** @nullable */
   customerPhone: string | null;
   passengers: number;
@@ -183,11 +189,14 @@ export interface DriverJob {
   time: string;
   pickup: string;
   destination: string;
+  stops: string[];
   passengers: number;
   vehicleType: string;
   payout: number;
   distanceKm: number;
   status: DriverJobStatus;
+  /** @nullable */
+  customerName: string | null;
   /** @nullable */
   customerPhone: string | null;
   isCustom: boolean;

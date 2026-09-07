@@ -38,7 +38,7 @@ import {
   experiencesTable,
 } from "@workspace/db";
 import { calculateQuote, formatDate } from "../lib/travel-data";
-import { requireAuth, requireRole } from "../lib/auth";
+import { optionalAuth, requireAuth, requireRole } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -50,6 +50,8 @@ function bookingResponse(booking: typeof bookingsTable.$inferSelect) {
     time: booking.scheduledTime,
     customerPhone: booking.customerPhone,
     pickup: booking.pickup,
+    stops: booking.stops,
+    customerName: booking.customerName,
     passengers: booking.passengers,
     total: booking.total,
     paid: booking.paid,
@@ -68,12 +70,14 @@ function driverJobResponse(job: typeof driverJobsTable.$inferSelect) {
     time: job.time,
     pickup: job.pickup,
     destination: job.destination,
+    stops: job.stops,
     passengers: job.passengers,
     vehicleType: job.vehicleType,
     payout: job.payout,
     distanceKm: job.distanceKm,
     status: job.status,
     isCustom: Boolean(job.isCustom),
+    customerName: job.customerName,
     customerPhone: job.customerPhone,
   };
 }
@@ -186,7 +190,7 @@ router.get("/bookings", requireAuth, async (req, res): Promise<void> => {
   res.json(ListBookingsResponse.parse(bookings.map(bookingResponse)));
 });
 
-router.post("/bookings", requireAuth, async (req, res): Promise<void> => {
+router.post("/bookings", optionalAuth, async (req, res): Promise<void> => {
   const parsed = CreateBookingBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -201,13 +205,15 @@ router.post("/bookings", requireAuth, async (req, res): Promise<void> => {
       .insert(bookingsTable)
       .values({
         id: bookingId,
-        customerId: req.userId!,
+        customerId: req.userId ?? null,
         experienceId: data.experienceId ?? null,
         title: data.title,
         scheduledDate,
         scheduledTime: data.time,
+        customerName: data.customerName,
         customerPhone: data.customerPhone,
         pickup: data.pickup,
+        stops: data.stops ?? [],
         passengers: Math.round(data.passengers),
         total: data.total,
         paid: 0,
@@ -224,13 +230,15 @@ router.post("/bookings", requireAuth, async (req, res): Promise<void> => {
       scheduledDate,
       time: data.time,
       pickup: data.pickup,
-      destination: data.destination ?? data.title,
+      destination: data.destination ?? data.stops?.[data.stops.length - 1] ?? data.title,
+      stops: data.stops ?? [],
       passengers: Math.round(data.passengers),
       vehicleType: data.vehicleType ?? "van",
       payout: Math.round(data.total * 0.82 * 100) / 100,
       distanceKm: 0,
       status: "open",
       isCustom: data.experienceId ? 0 : 1,
+      customerName: data.customerName,
       customerPhone: data.customerPhone,
     });
 

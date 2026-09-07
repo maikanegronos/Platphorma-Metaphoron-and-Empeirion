@@ -33,6 +33,12 @@ export const requireAuth: RequestHandler = (req, res, next) => {
   next();
 };
 
+export const optionalAuth: RequestHandler = (req, _res, next) => {
+  const { userId } = getAuth(req);
+  if (userId) req.userId = userId;
+  next();
+};
+
 export function requireRole(...roles: AccountRole[]): RequestHandler {
   return async (req, res, next) => {
     try {
