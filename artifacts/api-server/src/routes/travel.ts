@@ -316,9 +316,21 @@ router.post("/driver/jobs/:id/claim", requireRole("driver"), async (req, res): P
   }
 
   if (job.bookingId) {
+    let driverDisplayName = "Ο οδηγός σου";
+    try {
+      const [driverProfile] = await db.select({ name: driversTable.name }).from(driversTable).where(eq(driversTable.id, req.userId!));
+      if (driverProfile?.name) {
+        driverDisplayName = driverProfile.name;
+      } else {
+        const clerkUser = await clerkClient.users.getUser(req.userId!);
+        driverDisplayName = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ").trim() || driverDisplayName;
+      }
+    } catch {
+      // Best-effort name lookup; fall back to the generic label above.
+    }
     await db
       .update(bookingsTable)
-      .set({ driverName: "Ο οδηγός σου", vehicle: body.data.vehicle })
+      .set({ driverName: driverDisplayName, vehicle: body.data.vehicle })
       .where(eq(bookingsTable.id, job.bookingId));
   }
 
