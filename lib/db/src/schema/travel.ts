@@ -25,13 +25,14 @@ export const experiencesTable = pgTable("experiences", {
 
 export const bookingsTable = pgTable("bookings", {
   id: text("id").primaryKey(),
-  customerId: text("customer_id").notNull(),
+  customerId: text("customer_id"),
   experienceId: text("experience_id"),
   title: text("title").notNull(),
   scheduledDate: date("scheduled_date", { mode: "string" }).notNull(),
   scheduledTime: text("scheduled_time"),
   pickup: text("pickup").notNull(),
   stops: text("stops").array().notNull().default([]),
+  customerName: text("customer_name"),
   customerPhone: text("customer_phone"),
   passengers: integer("passengers").notNull(),
   total: doublePrecision("total").notNull(),
@@ -61,6 +62,7 @@ export const driverJobsTable = pgTable("driver_jobs", {
   isCustom: integer("is_custom").notNull().default(0),
   claimedDriverId: text("claimed_driver_id"),
   claimedVehicle: text("claimed_vehicle"),
+  customerName: text("customer_name"),
   customerPhone: text("customer_phone"),
 });
 
