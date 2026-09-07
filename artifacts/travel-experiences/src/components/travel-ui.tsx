@@ -67,8 +67,9 @@ export function PageIntro({ eyebrow, title, detail, action }: { eyebrow: string;
   return <div className="mb-9 flex flex-col justify-between gap-5 lg:flex-row lg:items-end"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.24em] text-accent">{eyebrow}</p><h1 className="mt-2 max-w-3xl font-display text-4xl leading-[1.05] tracking-tight text-primary md:text-5xl">{title}</h1><p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">{detail}</p></div>{action && <div>{action}</div>}</div>;
 }
 
-export function MetricCard({ label, value, foot, accent = false }: { label: string; value: string; foot: string; accent?: boolean }) {
-  return <div className={`rounded-2xl border p-5 ${accent ? 'border-accent/40 bg-accent/10' : 'border-border bg-card'}`}><p className="font-mono-ui text-[10px] uppercase tracking-[.16em] text-muted-foreground">{label}</p><p className="mt-3 font-display text-3xl text-primary">{value}</p><p className="mt-1 text-xs text-muted-foreground">{foot}</p></div>;
+export function MetricCard({ label, value, foot, accent = false, onClick }: { label: string; value: string; foot: string; accent?: boolean; onClick?: () => void }) {
+  const Tag = onClick ? 'button' : 'div';
+  return <Tag type={onClick ? 'button' : undefined} onClick={onClick} className={`rounded-2xl border p-5 text-left ${accent ? 'border-accent/40 bg-accent/10' : 'border-border bg-card'} ${onClick ? 'cursor-pointer transition hover:-translate-y-0.5 hover:shadow-md' : ''}`}><p className="font-mono-ui text-[10px] uppercase tracking-[.16em] text-muted-foreground">{label}</p><p className="mt-3 font-display text-3xl text-primary">{value}</p><p className="mt-1 text-xs text-muted-foreground">{foot}</p></Tag>;
 }
 
 export function DataTag({ children, icon: Icon = MapPin }: { children: ReactNode; icon?: typeof MapPin }) {
