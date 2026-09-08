@@ -22,6 +22,8 @@ import {
   ListBookingsResponse,
   ListDriverJobsResponse,
   ListExperiencesResponse,
+  PricingSettings,
+  UpdatePricingSettingsBody,
   ReviewDriverBody,
   ReviewDriverParams,
   ReviewDriverResponse,
@@ -36,8 +38,9 @@ import {
   driverDocumentsTable,
   driversTable,
   experiencesTable,
+  pricingSettingsTable,
 } from "@workspace/db";
-import { calculateQuote, formatDate } from "../lib/travel-data";
+import { calculateQuote, formatDate, getPricingSettings } from "../lib/travel-data";
 import { optionalAuth, requireAuth, requireRole } from "../lib/auth";
 
 const router: IRouter = Router();
@@ -52,6 +55,7 @@ function bookingResponse(booking: typeof bookingsTable.$inferSelect) {
     pickup: booking.pickup,
     stops: booking.stops,
     customerName: booking.customerName,
+    notes: booking.notes,
     passengers: booking.passengers,
     total: booking.total,
     paid: booking.paid,
@@ -79,6 +83,7 @@ function driverJobResponse(job: typeof driverJobsTable.$inferSelect) {
     isCustom: Boolean(job.isCustom),
     customerName: job.customerName,
     customerPhone: job.customerPhone,
+    notes: job.notes,
   };
 }
 
@@ -171,7 +176,8 @@ router.post("/quotes", async (req, res): Promise<void> => {
     return;
   }
 
-  const quote = calculateQuote(parsed.data);
+  const pricing = await getPricingSettings();
+  const quote = calculateQuote(parsed.data, pricing);
   res.json(CreateQuoteResponse.parse(quote));
 });
 
@@ -212,6 +218,7 @@ router.post("/bookings", optionalAuth, async (req, res): Promise<void> => {
         scheduledTime: data.time,
         customerName: data.customerName,
         customerPhone: data.customerPhone,
+        notes: data.notes ?? null,
         pickup: data.pickup,
         stops: data.stops ?? [],
         passengers: Math.round(data.passengers),
@@ -240,6 +247,7 @@ router.post("/bookings", optionalAuth, async (req, res): Promise<void> => {
       isCustom: data.experienceId ? 0 : 1,
       customerName: data.customerName,
       customerPhone: data.customerPhone,
+      notes: data.notes ?? null,
     });
 
     return [createdBooking];
@@ -501,6 +509,27 @@ router.patch("/admin/driver-documents/:id/review", requireRole("operator"), asyn
   }
 
   res.json(ReviewDriverDocumentResponse.parse(driverDocumentResponse(document)));
+});
+
+router.get("/admin/pricing-settings", requireRole("operator"), async (_req, res): Promise<void> => {
+  const settings = await getPricingSettings();
+  res.json(PricingSettings.parse(settings));
+});
+
+router.patch("/admin/pricing-settings", requireRole("operator"), async (req, res): Promise<void> => {
+  const body = UpdatePricingSettingsBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [settings] = await db
+    .insert(pricingSettingsTable)
+    .values({ id: "default", ...body.data })
+    .onConflictDoUpdate({ target: pricingSettingsTable.id, set: body.data })
+    .returning();
+
+  res.json(PricingSettings.parse(settings));
 });
 
 export default router;

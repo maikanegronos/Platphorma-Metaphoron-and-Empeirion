@@ -38,11 +38,13 @@ import type {
   JobClaimInput,
   ListBookingsParams,
   NotFoundResponse,
+  PricingSettings,
   Quote,
   QuoteInput,
   RoleUpdate,
   RoleUpdateInput,
   UnauthorizedResponse,
+  UpdatePricingSettingsInput,
   UploadUrlRequest,
   UploadUrlResponse
 } from './api.schemas';
@@ -749,6 +751,148 @@ export const useCancelBooking = <TError = ErrorType<NotFoundResponse | Error>,
         TContext
       > => {
       return useMutation(getCancelBookingMutationOptions(options));
+    }
+
+export const getPricingSettingsUrl = () => {
+
+
+
+
+  return `/api/admin/pricing-settings`
+}
+
+/**
+ * @summary Get the current pricing settings
+ */
+export const getPricingSettings = async ( options?: Parameters<typeof customFetch>[1]): Promise<PricingSettings> => {
+
+  return customFetch<PricingSettings>(getPricingSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPricingSettingsQueryKey = () => {
+    return [
+    `/api/admin/pricing-settings`
+    ] as const;
+    }
+
+
+export const getGetPricingSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getPricingSettings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPricingSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPricingSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPricingSettings>>> = ({ signal }) => getPricingSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPricingSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPricingSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getPricingSettings>>>
+export type GetPricingSettingsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the current pricing settings
+ */
+
+export function usePricingSettings<TData = Awaited<ReturnType<typeof getPricingSettings>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPricingSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPricingSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getUpdatePricingSettingsUrl = () => {
+
+
+
+
+  return `/api/admin/pricing-settings`
+}
+
+/**
+ * @summary Update the pricing settings
+ */
+export const updatePricingSettings = async (
+    updatePricingSettingsInput: UpdatePricingSettingsInput, options?: Parameters<typeof customFetch>[1]): Promise<PricingSettings> => {
+
+  return customFetch<PricingSettings>(getUpdatePricingSettingsUrl(),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updatePricingSettingsInput)
+  }
+);}
+
+
+
+
+export const getUpdatePricingSettingsMutationOptions = <TError = ErrorType<BadRequestResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePricingSettings>>, TError,{data: BodyType<UpdatePricingSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePricingSettings>>, TError,{data: BodyType<UpdatePricingSettingsInput>}, TContext> => {
+
+const mutationKey = ['updatePricingSettings'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePricingSettings>>, {data: BodyType<UpdatePricingSettingsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  updatePricingSettings(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePricingSettingsMutationResult = NonNullable<Awaited<ReturnType<typeof updatePricingSettings>>>
+
+    export type UpdatePricingSettingsMutationError = ErrorType<BadRequestResponse>
+
+    /**
+ * @summary Update the pricing settings
+ */
+export const useUpdatePricingSettings = <TError = ErrorType<BadRequestResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePricingSettings>>, TError,{data: BodyType<UpdatePricingSettingsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePricingSettings>>,
+        TError,
+        {data: BodyType<UpdatePricingSettingsInput>},
+        TContext
+      > => {
+      return useMutation(getUpdatePricingSettingsMutationOptions(options));
     }
 
 export const getListDriverJobsUrl = () => {

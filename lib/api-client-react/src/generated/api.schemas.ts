@@ -128,6 +128,7 @@ export interface BookingInput {
   customerName: string;
   /** @minLength 8 */
   customerPhone: string;
+  notes?: string;
   time: string;
   destination?: string;
   vehicleType?: BookingInputVehicleType;
@@ -159,6 +160,8 @@ export interface Booking {
   customerName: string | null;
   /** @nullable */
   customerPhone: string | null;
+  /** @nullable */
+  notes: string | null;
   passengers: number;
   total: number;
   paid: number;
@@ -199,7 +202,48 @@ export interface DriverJob {
   customerName: string | null;
   /** @nullable */
   customerPhone: string | null;
+  /** @nullable */
+  notes: string | null;
   isCustom: boolean;
+}
+
+export interface PricingSettings {
+  baseRate: number;
+  kmRate: number;
+  hourlyRate: number;
+  vehicleMultiplierSedan: number;
+  vehicleMultiplierVan: number;
+  vehicleMultiplierMinibus: number;
+  vehicleMultiplierBus: number;
+  freePassengers: number;
+  extraPassengerRate: number;
+  platformFeePercent: number;
+}
+
+export interface UpdatePricingSettingsInput {
+  /** @minimum 0 */
+  baseRate: number;
+  /** @minimum 0 */
+  kmRate: number;
+  /** @minimum 0 */
+  hourlyRate: number;
+  /** @minimum 0 */
+  vehicleMultiplierSedan: number;
+  /** @minimum 0 */
+  vehicleMultiplierVan: number;
+  /** @minimum 0 */
+  vehicleMultiplierMinibus: number;
+  /** @minimum 0 */
+  vehicleMultiplierBus: number;
+  /** @minimum 0 */
+  freePassengers: number;
+  /** @minimum 0 */
+  extraPassengerRate: number;
+  /**
+   * @minimum 0
+   * @maximum 1
+   */
+  platformFeePercent: number;
 }
 
 export interface JobClaimInput {

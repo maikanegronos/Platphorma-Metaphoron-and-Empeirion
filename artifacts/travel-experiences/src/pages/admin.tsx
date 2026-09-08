@@ -1,16 +1,19 @@
-import { useState } from 'react';
-import { CalendarDays, Check, Clock3, FileText, MapPin, ShieldCheck, Star, Users, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CalendarDays, Check, Clock3, FileText, MapPin, Settings2, ShieldCheck, Star, Users, X } from 'lucide-react';
 import {
   getListAdminBookingsQueryKey,
   getListAdminDriverDocumentsQueryKey,
   getListAdminDriversQueryKey,
+  getGetPricingSettingsQueryKey,
+  usePricingSettings,
+  useUpdatePricingSettings,
   useListAdminBookings,
   useListAdminDriverDocuments,
   useListAdminDrivers,
   useReviewDriver,
   useReviewDriverDocument,
 } from '@workspace/api-client-react';
-import type { Booking, Driver, DriverDocument } from '@workspace/api-client-react';
+import type { Booking, Driver, DriverDocument, UpdatePricingSettingsInput } from '@workspace/api-client-react';
 import { ActionButton, EmptyState, ErrorState, formatDate, formatEuro, LoadingState, MetricCard, PageIntro, StatusPill, SuccessNotice } from '@/components/travel-ui';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -18,11 +21,25 @@ export default function Admin() {
   const drivers = useListAdminDrivers({ query: { queryKey: getListAdminDriversQueryKey(), staleTime: 60_000 } });
   const bookings = useListAdminBookings({ query: { queryKey: getListAdminBookingsQueryKey(), staleTime: 30_000 } });
   const documents = useListAdminDriverDocuments({ query: { queryKey: getListAdminDriverDocumentsQueryKey(), staleTime: 30_000 } });
+  const pricing = usePricingSettings({ query: { queryKey: getGetPricingSettingsQueryKey(), staleTime: 60_000 } });
+  const updatePricing = useUpdatePricingSettings();
   const review = useReviewDriver();
   const reviewDocument = useReviewDriverDocument();
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pricingForm, setPricingForm] = useState<UpdatePricingSettingsInput | null>(null);
+  useEffect(() => { if (pricing.data && !pricingForm) setPricingForm(pricing.data); }, [pricing.data, pricingForm]);
+  const pricingField = (key: keyof UpdatePricingSettingsInput) => ({
+    value: pricingForm?.[key] ?? 0,
+    onChange: (event: React.ChangeEvent<HTMLInputElement>) => setPricingForm((prev) => prev && { ...prev, [key]: Number(event.target.value) }),
+  });
+  const savePricing = () => {
+    if (!pricingForm) return;
+    updatePricing.mutate({ data: pricingForm }, {
+      onSuccess: (updated) => { setPricingForm(updated); setNotice('Οι τιμές ενημερώθηκαν.'); queryClient.invalidateQueries({ queryKey: getGetPricingSettingsQueryKey() }); },
+    });
+  };
 
   const [reviewingDocumentId, setReviewingDocumentId] = useState<string | null>(null);
 
@@ -64,11 +81,23 @@ export default function Admin() {
     {notice && <div className="mb-5"><SuccessNotice>{notice}</SuccessNotice></div>}
     <section id="section-bookings" className="mb-10"><div className="mb-4 flex items-end justify-between"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Live operations</p><h2 className="mt-2 font-display text-3xl text-primary">Κρατήσεις και dispatch</h2></div><p className="text-xs text-muted-foreground">Το κινητό είναι διαθέσιμο για την επικοινωνία με τον πελάτη.</p></div>{bookings.isLoading ? <LoadingState label="Φορτώνουμε τις κρατήσεις…" /> : bookings.isError ? <ErrorState onRetry={() => bookings.refetch()} label="Δεν μπορέσαμε να φορτώσουμε τις κρατήσεις." /> : (bookings.data ?? []).length === 0 ? <EmptyState title="Δεν υπάρχουν κρατήσεις." detail="Οι νέες κρατήσεις θα εμφανιστούν εδώ μόλις δημιουργηθούν." /> : <div className="grid gap-3">{(bookings.data ?? []).map((booking) => <BookingRow key={booking.id} booking={booking} />)}</div>}</section>
     <section id="section-partners"><div className="mb-4"><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Partner review</p><h2 className="mt-2 font-display text-3xl text-primary">Οδηγοί και φάκελοι</h2></div>{drivers.isLoading ? <LoadingState label="Φορτώνουμε τους φακέλους συνεργατών…" /> : drivers.isError ? <ErrorState onRetry={() => drivers.refetch()} label="Δεν μπορέσαμε να φορτώσουμε τους οδηγούς." /> : (drivers.data ?? []).length === 0 ? <EmptyState title="Όλα τακτοποιημένα." detail="Δεν υπάρχουν οδηγοί που περιμένουν έλεγχο." /> : <div className="overflow-hidden rounded-2xl border border-[#d8d5cc] bg-card"><div className="hidden grid-cols-[1.4fr_1fr_.8fr_.8fr_1.2fr] gap-4 border-b border-border bg-[#e7e3d8] px-5 py-3 font-mono-ui text-[10px] uppercase tracking-[.15em] text-muted-foreground md:grid"><span>Συνεργάτης</span><span>Όχημα</span><span>Εμπειρία</span><span>Φάκελος</span><span>Ενέργεια</span></div>{(drivers.data ?? []).map((driver) => <DriverRow key={driver.id} driver={driver} busy={busyId === driver.id} onDecide={decide} documents={(documents.data ?? []).filter((doc) => doc.driverId === driver.id)} reviewingDocumentId={reviewingDocumentId} onDecideDocument={decideDocument} />)}</div>}</section>
+    <section id="section-pricing" className="mt-10"><div className="mb-4 flex items-center gap-2 text-primary"><Settings2 size={18} /><div><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Pricing engine</p><h2 className="mt-1 font-display text-3xl text-primary">Τιμολόγηση</h2></div></div><p className="mb-4 text-xs text-muted-foreground">Αυτές οι τιμές καθορίζουν αυτόματα κάθε νέα προσφορά τιμής (quote) στην πλατφόρμα.</p>{pricing.isLoading || !pricingForm ? <LoadingState label="Φορτώνουμε τις ρυθμίσεις τιμολόγησης…" /> : <div className="rounded-2xl border border-[#d8d5cc] bg-card p-5"><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <label className="text-sm"><span className="field-label">Βασική χρέωση (€)</span><input type="number" step="0.5" min="0" {...pricingField('baseRate')} className="field-light" data-testid="input-pricing-base-rate" /></label>
+      <label className="text-sm"><span className="field-label">Χρέωση ανά χλμ (€)</span><input type="number" step="0.05" min="0" {...pricingField('kmRate')} className="field-light" data-testid="input-pricing-km-rate" /></label>
+      <label className="text-sm"><span className="field-label">Χρέωση ανά ώρα (€)</span><input type="number" step="0.5" min="0" {...pricingField('hourlyRate')} className="field-light" data-testid="input-pricing-hourly-rate" /></label>
+      <label className="text-sm"><span className="field-label">Πολλαπλασιαστής Sedan</span><input type="number" step="0.05" min="0" {...pricingField('vehicleMultiplierSedan')} className="field-light" data-testid="input-pricing-multiplier-sedan" /></label>
+      <label className="text-sm"><span className="field-label">Πολλαπλασιαστής Van</span><input type="number" step="0.05" min="0" {...pricingField('vehicleMultiplierVan')} className="field-light" data-testid="input-pricing-multiplier-van" /></label>
+      <label className="text-sm"><span className="field-label">Πολλαπλασιαστής Minibus</span><input type="number" step="0.05" min="0" {...pricingField('vehicleMultiplierMinibus')} className="field-light" data-testid="input-pricing-multiplier-minibus" /></label>
+      <label className="text-sm"><span className="field-label">Πολλαπλασιαστής Bus</span><input type="number" step="0.05" min="0" {...pricingField('vehicleMultiplierBus')} className="field-light" data-testid="input-pricing-multiplier-bus" /></label>
+      <label className="text-sm"><span className="field-label">Δωρεάν επιβάτες (έως)</span><input type="number" step="1" min="0" {...pricingField('freePassengers')} className="field-light" data-testid="input-pricing-free-passengers" /></label>
+      <label className="text-sm"><span className="field-label">Χρέωση ανά επιπλέον επιβάτη (€)</span><input type="number" step="0.5" min="0" {...pricingField('extraPassengerRate')} className="field-light" data-testid="input-pricing-extra-passenger-rate" /></label>
+      <label className="text-sm"><span className="field-label">Προμήθεια πλατφόρμας (0–1, π.χ. 0.18 = 18%)</span><input type="number" step="0.01" min="0" max="1" {...pricingField('platformFeePercent')} className="field-light" data-testid="input-pricing-platform-fee" /></label>
+    </div><ActionButton onClick={savePricing} loading={updatePricing.isPending} className="mt-5" data-testid="button-save-pricing">Αποθήκευση τιμών</ActionButton>{updatePricing.isError && <p className="mt-3 text-xs text-[#b24d42]">Η αποθήκευση απέτυχε. Έλεγξε τις τιμές και δοκίμασε ξανά.</p>}</div>}</section>
   </div></div>;
 }
 
 function BookingRow({ booking }: { booking: Booking }) {
-  return <article className="rounded-2xl border border-[#d8d5cc] bg-card p-4 md:p-5" data-testid={`row-booking-${booking.id}`}><div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-display text-2xl text-primary">{booking.title}</h3><StatusPill status={booking.status} /></div><div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground"><span className="inline-flex items-center gap-1"><CalendarDays size={13} /> {formatDate(booking.date)}</span><span className="inline-flex items-center gap-1"><Clock3 size={13} /> {booking.time ?? 'Ώρα σε επιβεβαίωση'}</span><span className="inline-flex items-center gap-1"><MapPin size={13} /> {booking.pickup}</span><span className="inline-flex items-center gap-1"><Users size={13} /> {booking.passengers} άτομα</span></div></div><div className="flex flex-wrap items-center gap-5 text-sm"><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Πελάτης</p><p className="font-semibold text-primary">{booking.customerName ?? 'Χωρίς όνομα'}</p><p className="text-xs text-muted-foreground">{booking.customerPhone ?? 'Χωρίς κινητό'}</p></div><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Οδηγός</p><p className="font-semibold text-primary">{booking.driverName ?? 'Αναμένεται'}</p>{booking.vehicle && <p className="text-xs text-muted-foreground">{booking.vehicle}</p>}</div><div className="text-right"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Σύνολο</p><p className="font-display text-xl text-primary">{formatEuro(booking.total)}</p></div></div></div></article>;
+  return <article className="rounded-2xl border border-[#d8d5cc] bg-card p-4 md:p-5" data-testid={`row-booking-${booking.id}`}><div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div><div className="flex flex-wrap items-center gap-2"><h3 className="font-display text-2xl text-primary">{booking.title}</h3><StatusPill status={booking.status} /></div><div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground"><span className="inline-flex items-center gap-1"><CalendarDays size={13} /> {formatDate(booking.date)}</span><span className="inline-flex items-center gap-1"><Clock3 size={13} /> {booking.time ?? 'Ώρα σε επιβεβαίωση'}</span><span className="inline-flex items-center gap-1"><MapPin size={13} /> {booking.pickup}</span><span className="inline-flex items-center gap-1"><Users size={13} /> {booking.passengers} άτομα</span></div>{booking.stops.length > 0 && <p className="mt-2 text-xs text-muted-foreground"><strong className="text-primary">Στάσεις:</strong> {booking.stops.join(' → ')}</p>}{booking.notes && <p className="mt-2 max-w-md rounded-lg bg-[#fbf3e6] p-2 text-xs text-primary"><FileText size={12} className="mr-1 inline" />{booking.notes}</p>}</div><div className="flex flex-wrap items-center gap-5 text-sm"><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Πελάτης</p><p className="font-semibold text-primary">{booking.customerName ?? 'Χωρίς όνομα'}</p><p className="text-xs text-muted-foreground">{booking.customerPhone ?? 'Χωρίς κινητό'}</p></div><div><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Οδηγός</p><p className="font-semibold text-primary">{booking.driverName ?? 'Αναμένεται'}</p>{booking.vehicle && <p className="text-xs text-muted-foreground">{booking.vehicle}</p>}</div><div className="text-right"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Σύνολο</p><p className="font-display text-xl text-primary">{formatEuro(booking.total)}</p></div></div></div></article>;
 }
 
 function DriverRow({ driver, busy, onDecide, documents, reviewingDocumentId, onDecideDocument }: { driver: Driver; busy: boolean; onDecide: (driver: Driver, status: 'approved' | 'rejected') => void; documents: DriverDocument[]; reviewingDocumentId: string | null; onDecideDocument: (document: DriverDocument, status: 'approved' | 'rejected') => void }) {

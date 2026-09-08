@@ -1,5 +1,5 @@
-import { db, bookingsTable, driverJobsTable, driversTable, experiencesTable } from "@workspace/db";
-import { count } from "drizzle-orm";
+import { db, bookingsTable, driverJobsTable, driversTable, experiencesTable, pricingSettingsTable } from "@workspace/db";
+import { count, eq } from "drizzle-orm";
 
 export const seededExperiences = [
   {
@@ -88,12 +88,24 @@ export const seededJobs = [
   },
 ];
 
+export async function getPricingSettings() {
+  const [row] = await db.select().from(pricingSettingsTable).where(eq(pricingSettingsTable.id, "default"));
+  return row ?? defaultPricingSettings;
+}
+
 export async function ensureTravelSeed(): Promise<void> {
   const [{ value: experienceCount }] = await db
     .select({ value: count() })
     .from(experiencesTable);
   if (Number(experienceCount) === 0) {
     await db.insert(experiencesTable).values(seededExperiences);
+  }
+
+  const [{ value: pricingCount }] = await db
+    .select({ value: count() })
+    .from(pricingSettingsTable);
+  if (Number(pricingCount) === 0) {
+    await db.insert(pricingSettingsTable).values(defaultPricingSettings);
   }
 
   const [{ value: jobCount }] = await db
@@ -185,28 +197,42 @@ export function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-export function calculateQuote(input: {
-  stops: string[];
-  durationHours: number;
-  passengers: number;
-  vehicleType: "sedan" | "van" | "minibus" | "bus";
-}) {
+export const defaultPricingSettings = {
+  id: "default",
+  baseRate: 42,
+  kmRate: 1.35,
+  hourlyRate: 22,
+  vehicleMultiplierSedan: 1,
+  vehicleMultiplierVan: 1.35,
+  vehicleMultiplierMinibus: 1.7,
+  vehicleMultiplierBus: 2.25,
+  freePassengers: 4,
+  extraPassengerRate: 8,
+  platformFeePercent: 0.18,
+};
+
+export function calculateQuote(
+  input: {
+    stops: string[];
+    durationHours: number;
+    passengers: number;
+    vehicleType: "sedan" | "van" | "minibus" | "bus";
+  },
+  pricing: typeof defaultPricingSettings,
+) {
   const distanceKm = Math.max(18, 12 + input.stops.length * 18 + input.durationHours * 5);
-  const baseRate = 42;
-  const kmRate = 1.35;
-  const hourlyRate = 22;
   const vehicleMultiplier = {
-    sedan: 1,
-    van: 1.35,
-    minibus: 1.7,
-    bus: 2.25,
+    sedan: pricing.vehicleMultiplierSedan,
+    van: pricing.vehicleMultiplierVan,
+    minibus: pricing.vehicleMultiplierMinibus,
+    bus: pricing.vehicleMultiplierBus,
   }[input.vehicleType];
-  const base = baseRate;
-  const distance = distanceKm * kmRate;
-  const hours = input.durationHours * hourlyRate;
-  const passengerAdjustment = Math.max(0, input.passengers - 4) * 8;
+  const base = pricing.baseRate;
+  const distance = distanceKm * pricing.kmRate;
+  const hours = input.durationHours * pricing.hourlyRate;
+  const passengerAdjustment = Math.max(0, input.passengers - pricing.freePassengers) * pricing.extraPassengerRate;
   const subtotal = Math.round((base + distance + hours + passengerAdjustment) * vehicleMultiplier);
-  const platformFee = Math.round(subtotal * 0.18);
+  const platformFee = Math.round(subtotal * pricing.platformFeePercent);
   const total = subtotal + platformFee;
 
   return {

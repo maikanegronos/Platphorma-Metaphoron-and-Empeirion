@@ -136,6 +136,7 @@ export const ListBookingsResponseItem = zod.object({
   "stops": zod.array(zod.string()),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
+  "notes": zod.string().nullable(),
   "passengers": zod.number(),
   "total": zod.number(),
   "paid": zod.number(),
@@ -166,6 +167,7 @@ export const CreateBookingBody = zod.object({
   "stops": zod.array(zod.string()).optional(),
   "customerName": zod.string().min(1),
   "customerPhone": zod.string().min(createBookingBodyCustomerPhoneMin),
+  "notes": zod.string().optional(),
   "time": zod.string(),
   "destination": zod.string().optional(),
   "vehicleType": zod.enum(['sedan', 'van', 'minibus', 'bus']).optional(),
@@ -182,6 +184,7 @@ export const CreateBookingResponse = zod.object({
   "stops": zod.array(zod.string()),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
+  "notes": zod.string().nullable(),
   "passengers": zod.number(),
   "total": zod.number(),
   "paid": zod.number(),
@@ -207,6 +210,7 @@ export const CancelBookingResponse = zod.object({
   "stops": zod.array(zod.string()),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
+  "notes": zod.string().nullable(),
   "passengers": zod.number(),
   "total": zod.number(),
   "paid": zod.number(),
@@ -214,6 +218,8 @@ export const CancelBookingResponse = zod.object({
   "driverName": zod.string().nullable(),
   "vehicle": zod.string().nullable()
 })
+
+
 
 
 /**
@@ -235,6 +241,7 @@ export const ListDriverJobsResponseItem = zod.object({
   "status": zod.enum(['open', 'claimed', 'in-progress', 'completed', 'cancelled']),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
+  "notes": zod.string().nullable(),
   "isCustom": zod.boolean()
 })
 export const ListDriverJobsResponse = zod.array(ListDriverJobsResponseItem)
@@ -268,6 +275,7 @@ export const ClaimDriverJobResponse = zod.object({
   "status": zod.enum(['open', 'claimed', 'in-progress', 'completed', 'cancelled']),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
+  "notes": zod.string().nullable(),
   "isCustom": zod.boolean()
 })
 
@@ -299,6 +307,7 @@ export const UpdateDriverJobStatusResponse = zod.object({
   "status": zod.enum(['open', 'claimed', 'in-progress', 'completed', 'cancelled']),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
+  "notes": zod.string().nullable(),
   "isCustom": zod.boolean()
 })
 
@@ -320,6 +329,7 @@ export const GetDashboardSummaryResponse = zod.object({
   "stops": zod.array(zod.string()),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
+  "notes": zod.string().nullable(),
   "passengers": zod.number(),
   "total": zod.number(),
   "paid": zod.number(),
@@ -359,6 +369,7 @@ export const ListAdminBookingsResponseItem = zod.object({
   "stops": zod.array(zod.string()),
   "customerName": zod.string().nullable(),
   "customerPhone": zod.string().nullable(),
+  "notes": zod.string().nullable(),
   "passengers": zod.number(),
   "total": zod.number(),
   "paid": zod.number(),
@@ -452,6 +463,32 @@ export const ListAdminDriverDocumentsResponseItem = zod.object({
   "createdAt": zod.coerce.date()
 })
 export const ListAdminDriverDocumentsResponse = zod.array(ListAdminDriverDocumentsResponseItem)
+
+export const PricingSettings = zod.object({
+  "baseRate": zod.number(),
+  "kmRate": zod.number(),
+  "hourlyRate": zod.number(),
+  "vehicleMultiplierSedan": zod.number(),
+  "vehicleMultiplierVan": zod.number(),
+  "vehicleMultiplierMinibus": zod.number(),
+  "vehicleMultiplierBus": zod.number(),
+  "freePassengers": zod.number(),
+  "extraPassengerRate": zod.number(),
+  "platformFeePercent": zod.number(),
+})
+
+export const UpdatePricingSettingsBody = zod.object({
+  "baseRate": zod.number().min(0),
+  "kmRate": zod.number().min(0),
+  "hourlyRate": zod.number().min(0),
+  "vehicleMultiplierSedan": zod.number().min(0),
+  "vehicleMultiplierVan": zod.number().min(0),
+  "vehicleMultiplierMinibus": zod.number().min(0),
+  "vehicleMultiplierBus": zod.number().min(0),
+  "freePassengers": zod.number().min(0),
+  "extraPassengerRate": zod.number().min(0),
+  "platformFeePercent": zod.number().min(0).max(1),
+})
 
 
 /**

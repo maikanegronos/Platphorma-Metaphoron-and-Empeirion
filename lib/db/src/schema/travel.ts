@@ -34,6 +34,7 @@ export const bookingsTable = pgTable("bookings", {
   stops: text("stops").array().notNull().default([]),
   customerName: text("customer_name"),
   customerPhone: text("customer_phone"),
+  notes: text("notes"),
   passengers: integer("passengers").notNull(),
   total: doublePrecision("total").notNull(),
   paid: doublePrecision("paid").notNull(),
@@ -64,6 +65,7 @@ export const driverJobsTable = pgTable("driver_jobs", {
   claimedVehicle: text("claimed_vehicle"),
   customerName: text("customer_name"),
   customerPhone: text("customer_phone"),
+  notes: text("notes"),
 });
 
 export const driversTable = pgTable("drivers", {
@@ -91,6 +93,20 @@ export const driverDocumentsTable = pgTable("driver_documents", {
     .defaultNow(),
 });
 
+export const pricingSettingsTable = pgTable("pricing_settings", {
+  id: text("id").primaryKey().default("default"),
+  baseRate: doublePrecision("base_rate").notNull(),
+  kmRate: doublePrecision("km_rate").notNull(),
+  hourlyRate: doublePrecision("hourly_rate").notNull(),
+  vehicleMultiplierSedan: doublePrecision("vehicle_multiplier_sedan").notNull(),
+  vehicleMultiplierVan: doublePrecision("vehicle_multiplier_van").notNull(),
+  vehicleMultiplierMinibus: doublePrecision("vehicle_multiplier_minibus").notNull(),
+  vehicleMultiplierBus: doublePrecision("vehicle_multiplier_bus").notNull(),
+  freePassengers: integer("free_passengers").notNull(),
+  extraPassengerRate: doublePrecision("extra_passenger_rate").notNull(),
+  platformFeePercent: doublePrecision("platform_fee_percent").notNull(),
+});
+
 export const insertExperienceSchema = createInsertSchema(experiencesTable);
 export type InsertExperience = z.infer<typeof insertExperienceSchema>;
 export type Experience = typeof experiencesTable.$inferSelect;
@@ -110,3 +126,5 @@ export type Driver = typeof driversTable.$inferSelect;
 export const insertDriverDocumentSchema = createInsertSchema(driverDocumentsTable);
 export type InsertDriverDocument = z.infer<typeof insertDriverDocumentSchema>;
 export type DriverDocument = typeof driverDocumentsTable.$inferSelect;
+
+export type PricingSettings = typeof pricingSettingsTable.$inferSelect;
