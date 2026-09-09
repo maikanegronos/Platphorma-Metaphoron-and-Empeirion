@@ -5,6 +5,7 @@ import {
 } from "@workspace/api-client-react";
 
 export const accountRoles = ["traveler", "driver", "operator"] as const;
+export const selfServiceAccountRoles = ["traveler", "driver"] as const;
 export type AccountRole = (typeof accountRoles)[number];
 
 export type CurrentUser = {

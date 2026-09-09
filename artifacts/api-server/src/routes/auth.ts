@@ -23,10 +23,12 @@ router.get("/me", requireAuth, async (req, res): Promise<void> => {
   });
 });
 
+const selfServiceRoles = ["traveler", "driver"] as const;
+
 router.patch("/me/role", requireAuth, async (req, res): Promise<void> => {
   const role = req.body?.role;
-  if (typeof role !== "string" || !accountRoles.includes(role as (typeof accountRoles)[number])) {
-    res.status(400).json({ error: "Μη έγκυρος ρόλος λογαριασμού." });
+  if (typeof role !== "string" || !selfServiceRoles.includes(role as (typeof selfServiceRoles)[number])) {
+    res.status(403).json({ error: "Αυτός ο ρόλος δεν μπορεί να επιλεγεί αυτόματα. Επικοινώνησε με τον διαχειριστή." });
     return;
   }
 

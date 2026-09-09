@@ -3,7 +3,7 @@ import { useClerk, useUser } from "@clerk/react";
 import { Redirect, useLocation } from "wouter";
 import { ArrowRight, CarFront, Compass, ShieldCheck } from "lucide-react";
 import {
-  accountRoles,
+  selfServiceAccountRoles,
   type AccountRole,
   roleLabel,
   updateAccountRole,
@@ -93,7 +93,7 @@ export default function ChooseRole() {
             εργαλεία και ειδοποιήσεις. Μπορείς να το αλλάξεις αργότερα από το προφίλ σου.
           </p>
           <div className="mt-8 grid gap-3 md:grid-cols-3">
-            {accountRoles.map((role) => {
+            {selfServiceAccountRoles.map((role) => {
               const detail = roleDetails[role];
               const Icon = detail.icon;
               const isSelected = selected === role;
