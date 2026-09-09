@@ -115,6 +115,24 @@ export const BookingInputPaymentPlan = {
   full: 'full',
 } as const;
 
+export interface ExperienceInput {
+  /** @minLength 1 */
+  title: string;
+  /** @minLength 1 */
+  location: string;
+  /** @minimum 0.5 */
+  durationHours: number;
+  /** @minimum 0 */
+  priceFrom: number;
+  /** @minLength 1 */
+  category: string;
+  /** @minLength 1 */
+  description: string;
+  /** @minLength 1 */
+  imageUrl: string;
+  highlights: string[];
+}
+
 export interface BookingInput {
   customerId?: string;
   experienceId?: string;

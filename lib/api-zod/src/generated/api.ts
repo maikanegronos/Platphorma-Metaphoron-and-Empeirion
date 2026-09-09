@@ -83,6 +83,43 @@ export const GetExperienceResponse = zod.object({
   "reviewCount": zod.number()
 })
 
+export const experienceFieldsShape = {
+  "title": zod.string().min(1),
+  "location": zod.string().min(1),
+  "durationHours": zod.number().min(0.5),
+  "priceFrom": zod.number().min(0),
+  "category": zod.string().min(1),
+  "description": zod.string().min(1),
+  "imageUrl": zod.string().min(1),
+  "highlights": zod.array(zod.string()),
+};
+
+export const CreateExperienceBody = zod.object(experienceFieldsShape)
+
+export const CreateExperienceResponse = zod.object({
+  "id": zod.string(),
+  ...experienceFieldsShape,
+  "rating": zod.number(),
+  "reviewCount": zod.number(),
+})
+
+export const UpdateExperienceParams = zod.object({
+  "id": zod.string()
+})
+
+export const UpdateExperienceBody = zod.object(experienceFieldsShape)
+
+export const UpdateExperienceResponse = zod.object({
+  "id": zod.string(),
+  ...experienceFieldsShape,
+  "rating": zod.number(),
+  "reviewCount": zod.number(),
+})
+
+export const DeleteExperienceParams = zod.object({
+  "id": zod.string()
+})
+
 
 /**
  * @summary Calculate a custom experience quote

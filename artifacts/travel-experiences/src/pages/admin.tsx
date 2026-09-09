@@ -1,19 +1,24 @@
 import { useEffect, useState } from 'react';
-import { CalendarDays, Check, Clock3, FileText, MapPin, Settings2, ShieldCheck, Star, Users, X } from 'lucide-react';
+import { CalendarDays, Check, Clock3, FileText, MapPin, Pencil, Plus, Settings2, ShieldCheck, Star, Trash2, Users, X } from 'lucide-react';
 import {
   getListAdminBookingsQueryKey,
   getListAdminDriverDocumentsQueryKey,
   getListAdminDriversQueryKey,
   getGetPricingSettingsQueryKey,
+  getListExperiencesQueryKey,
   usePricingSettings,
   useUpdatePricingSettings,
   useListAdminBookings,
   useListAdminDriverDocuments,
   useListAdminDrivers,
+  useListExperiences,
+  useCreateExperience,
+  useUpdateExperience,
+  useDeleteExperience,
   useReviewDriver,
   useReviewDriverDocument,
 } from '@workspace/api-client-react';
-import type { Booking, Driver, DriverDocument, UpdatePricingSettingsInput } from '@workspace/api-client-react';
+import type { Booking, Driver, DriverDocument, Experience, ExperienceInput, UpdatePricingSettingsInput } from '@workspace/api-client-react';
 import { ActionButton, EmptyState, ErrorState, formatDate, formatEuro, LoadingState, MetricCard, PageIntro, StatusPill, SuccessNotice } from '@/components/travel-ui';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -23,6 +28,10 @@ export default function Admin() {
   const documents = useListAdminDriverDocuments({ query: { queryKey: getListAdminDriverDocumentsQueryKey(), staleTime: 30_000 } });
   const pricing = usePricingSettings({ query: { queryKey: getGetPricingSettingsQueryKey(), staleTime: 60_000 } });
   const updatePricing = useUpdatePricingSettings();
+  const experiences = useListExperiences({ query: { queryKey: getListExperiencesQueryKey(), staleTime: 60_000 } });
+  const createExperience = useCreateExperience();
+  const updateExperience = useUpdateExperience();
+  const deleteExperience = useDeleteExperience();
   const review = useReviewDriver();
   const reviewDocument = useReviewDriverDocument();
   const queryClient = useQueryClient();
@@ -38,6 +47,30 @@ export default function Admin() {
     if (!pricingForm) return;
     updatePricing.mutate({ data: pricingForm }, {
       onSuccess: (updated) => { setPricingForm(updated); setNotice('Οι τιμές ενημερώθηκαν.'); queryClient.invalidateQueries({ queryKey: getGetPricingSettingsQueryKey() }); },
+    });
+  };
+
+  const emptyExperienceForm: ExperienceInput = { title: '', location: '', durationHours: 6, priceFrom: 100, category: '', description: '', imageUrl: '', highlights: [] };
+  const [experienceForm, setExperienceForm] = useState<ExperienceInput | null>(null);
+  const [editingExperienceId, setEditingExperienceId] = useState<string | null>(null);
+  const [highlightsText, setHighlightsText] = useState('');
+  const startNewExperience = () => { setEditingExperienceId('new'); setExperienceForm(emptyExperienceForm); setHighlightsText(''); };
+  const startEditExperience = (experience: Experience) => { setEditingExperienceId(experience.id); setExperienceForm({ title: experience.title, location: experience.location, durationHours: experience.durationHours, priceFrom: experience.priceFrom, category: experience.category, description: experience.description, imageUrl: experience.imageUrl, highlights: experience.highlights }); setHighlightsText(experience.highlights.join(', ')); };
+  const cancelExperienceEdit = () => { setEditingExperienceId(null); setExperienceForm(null); };
+  const saveExperience = () => {
+    if (!experienceForm) return;
+    const payload: ExperienceInput = { ...experienceForm, highlights: highlightsText.split(',').map((h) => h.trim()).filter(Boolean) };
+    const onSuccess = () => { setNotice(editingExperienceId === 'new' ? 'Η εμπειρία δημιουργήθηκε.' : 'Η εμπειρία ενημερώθηκε.'); cancelExperienceEdit(); queryClient.invalidateQueries({ queryKey: getListExperiencesQueryKey() }); };
+    if (editingExperienceId === 'new') {
+      createExperience.mutate({ data: payload }, { onSuccess });
+    } else if (editingExperienceId) {
+      updateExperience.mutate({ id: editingExperienceId, data: payload }, { onSuccess });
+    }
+  };
+  const removeExperience = (experience: Experience) => {
+    if (!window.confirm(`Διαγραφή της εμπειρίας "${experience.title}";`)) return;
+    deleteExperience.mutate({ id: experience.id }, {
+      onSuccess: () => { setNotice('Η εμπειρία διαγράφηκε.'); queryClient.invalidateQueries({ queryKey: getListExperiencesQueryKey() }); },
     });
   };
 
@@ -81,6 +114,19 @@ export default function Admin() {
     {notice && <div className="mb-5"><SuccessNotice>{notice}</SuccessNotice></div>}
     <section id="section-bookings" className="mb-10"><div className="mb-4 flex items-end justify-between"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Live operations</p><h2 className="mt-2 font-display text-3xl text-primary">Κρατήσεις και dispatch</h2></div><p className="text-xs text-muted-foreground">Το κινητό είναι διαθέσιμο για την επικοινωνία με τον πελάτη.</p></div>{bookings.isLoading ? <LoadingState label="Φορτώνουμε τις κρατήσεις…" /> : bookings.isError ? <ErrorState onRetry={() => bookings.refetch()} label="Δεν μπορέσαμε να φορτώσουμε τις κρατήσεις." /> : (bookings.data ?? []).length === 0 ? <EmptyState title="Δεν υπάρχουν κρατήσεις." detail="Οι νέες κρατήσεις θα εμφανιστούν εδώ μόλις δημιουργηθούν." /> : <div className="grid gap-3">{(bookings.data ?? []).map((booking) => <BookingRow key={booking.id} booking={booking} />)}</div>}</section>
     <section id="section-partners"><div className="mb-4"><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Partner review</p><h2 className="mt-2 font-display text-3xl text-primary">Οδηγοί και φάκελοι</h2></div>{drivers.isLoading ? <LoadingState label="Φορτώνουμε τους φακέλους συνεργατών…" /> : drivers.isError ? <ErrorState onRetry={() => drivers.refetch()} label="Δεν μπορέσαμε να φορτώσουμε τους οδηγούς." /> : (drivers.data ?? []).length === 0 ? <EmptyState title="Όλα τακτοποιημένα." detail="Δεν υπάρχουν οδηγοί που περιμένουν έλεγχο." /> : <div className="overflow-hidden rounded-2xl border border-[#d8d5cc] bg-card"><div className="hidden grid-cols-[1.4fr_1fr_.8fr_.8fr_1.2fr] gap-4 border-b border-border bg-[#e7e3d8] px-5 py-3 font-mono-ui text-[10px] uppercase tracking-[.15em] text-muted-foreground md:grid"><span>Συνεργάτης</span><span>Όχημα</span><span>Εμπειρία</span><span>Φάκελος</span><span>Ενέργεια</span></div>{(drivers.data ?? []).map((driver) => <DriverRow key={driver.id} driver={driver} busy={busyId === driver.id} onDecide={decide} documents={(documents.data ?? []).filter((doc) => doc.driverId === driver.id)} reviewingDocumentId={reviewingDocumentId} onDecideDocument={decideDocument} />)}</div>}</section>
+    <section id="section-experiences" className="mt-10"><div className="mb-4 flex items-center justify-between"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Catalog</p><h2 className="mt-1 font-display text-3xl text-primary">Εμπειρίες</h2></div>{!editingExperienceId && <button onClick={startNewExperience} data-testid="button-new-experience" className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"><Plus size={16} /> Νέα εμπειρία</button>}</div>
+      {editingExperienceId && experienceForm && <div className="mb-6 rounded-2xl border border-[#d8d5cc] bg-card p-5"><h3 className="mb-4 font-display text-xl text-primary">{editingExperienceId === 'new' ? 'Νέα εμπειρία' : 'Επεξεργασία εμπειρίας'}</h3><div className="grid gap-4 sm:grid-cols-2">
+        <label className="text-sm sm:col-span-2"><span className="field-label">Τίτλος</span><input value={experienceForm.title} onChange={(e) => setExperienceForm({ ...experienceForm, title: e.target.value })} className="field-light" data-testid="input-experience-title" /></label>
+        <label className="text-sm"><span className="field-label">Τοποθεσία</span><input value={experienceForm.location} onChange={(e) => setExperienceForm({ ...experienceForm, location: e.target.value })} className="field-light" data-testid="input-experience-location" /></label>
+        <label className="text-sm"><span className="field-label">Κατηγορία</span><input value={experienceForm.category} onChange={(e) => setExperienceForm({ ...experienceForm, category: e.target.value })} className="field-light" data-testid="input-experience-category" /></label>
+        <label className="text-sm"><span className="field-label">Διάρκεια (ώρες)</span><input type="number" step="0.5" min="0.5" value={experienceForm.durationHours} onChange={(e) => setExperienceForm({ ...experienceForm, durationHours: Number(e.target.value) })} className="field-light" data-testid="input-experience-duration" /></label>
+        <label className="text-sm"><span className="field-label">Τιμή από (€)</span><input type="number" step="1" min="0" value={experienceForm.priceFrom} onChange={(e) => setExperienceForm({ ...experienceForm, priceFrom: Number(e.target.value) })} className="field-light" data-testid="input-experience-price" /></label>
+        <label className="text-sm sm:col-span-2"><span className="field-label">URL φωτογραφίας</span><input value={experienceForm.imageUrl} onChange={(e) => setExperienceForm({ ...experienceForm, imageUrl: e.target.value })} placeholder="https://…" className="field-light" data-testid="input-experience-image" /></label>
+        <label className="text-sm sm:col-span-2"><span className="field-label">Περιγραφή</span><textarea rows={3} value={experienceForm.description} onChange={(e) => setExperienceForm({ ...experienceForm, description: e.target.value })} className="field-light w-full resize-none" data-testid="input-experience-description" /></label>
+        <label className="text-sm sm:col-span-2"><span className="field-label">Highlights (χωρισμένα με κόμμα)</span><input value={highlightsText} onChange={(e) => setHighlightsText(e.target.value)} placeholder="π.χ. Ξεναγός, Γεύσεις, Sunset stop" className="field-light" data-testid="input-experience-highlights" /></label>
+      </div><div className="mt-5 flex gap-3"><ActionButton onClick={saveExperience} loading={createExperience.isPending || updateExperience.isPending} data-testid="button-save-experience">Αποθήκευση</ActionButton><button onClick={cancelExperienceEdit} className="rounded-xl border border-border px-4 py-2.5 text-sm font-bold text-muted-foreground hover:text-primary">Άκυρο</button></div>{(createExperience.isError || updateExperience.isError) && <p className="mt-3 text-xs text-[#b24d42]">Η αποθήκευση απέτυχε. Έλεγξε τα πεδία και δοκίμασε ξανά.</p>}</div>}
+      {experiences.isLoading ? <LoadingState label="Φορτώνουμε τις εμπειρίες…" /> : experiences.isError ? <ErrorState onRetry={() => experiences.refetch()} label="Δεν μπορέσαμε να φορτώσουμε τις εμπειρίες." /> : (experiences.data ?? []).length === 0 ? <EmptyState title="Καμία εμπειρία ακόμα." detail="Πάτα «Νέα εμπειρία» για να προσθέσεις την πρώτη." /> : <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{(experiences.data ?? []).map((experience) => <div key={experience.id} className="rounded-2xl border border-[#d8d5cc] bg-card p-4" data-testid={`row-experience-${experience.id}`}><p className="font-display text-lg text-primary">{experience.title}</p><p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground"><MapPin size={12} />{experience.location} · {experience.category}</p><p className="mt-2 text-sm font-bold text-primary">{formatEuro(experience.priceFrom)} <span className="font-normal text-muted-foreground">/ {experience.durationHours}ω</span></p><div className="mt-3 flex gap-2"><button onClick={() => startEditExperience(experience)} data-testid={`button-edit-experience-${experience.id}`} className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-bold text-primary hover:bg-muted"><Pencil size={12} /> Επεξεργασία</button><button onClick={() => removeExperience(experience)} data-testid={`button-delete-experience-${experience.id}`} className="inline-flex items-center gap-1 rounded-lg border border-[#e5b2aa] px-2.5 py-1.5 text-xs font-bold text-[#a24d43] hover:bg-[#fff3f0]"><Trash2 size={12} /> Διαγραφή</button></div></div>)}</div>}
+    </section>
     <section id="section-pricing" className="mt-10"><div className="mb-4 flex items-center gap-2 text-primary"><Settings2 size={18} /><div><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Pricing engine</p><h2 className="mt-1 font-display text-3xl text-primary">Τιμολόγηση</h2></div></div><p className="mb-4 text-xs text-muted-foreground">Αυτές οι τιμές καθορίζουν αυτόματα κάθε νέα προσφορά τιμής (quote) στην πλατφόρμα.</p>{pricing.isLoading || !pricingForm ? <LoadingState label="Φορτώνουμε τις ρυθμίσεις τιμολόγησης…" /> : <div className="rounded-2xl border border-[#d8d5cc] bg-card p-5"><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <label className="text-sm"><span className="field-label">Βασική χρέωση (€)</span><input type="number" step="0.5" min="0" {...pricingField('baseRate')} className="field-light" data-testid="input-pricing-base-rate" /></label>
       <label className="text-sm"><span className="field-label">Χρέωση ανά χλμ (€)</span><input type="number" step="0.05" min="0" {...pricingField('kmRate')} className="field-light" data-testid="input-pricing-km-rate" /></label>

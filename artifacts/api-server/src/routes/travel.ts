@@ -10,9 +10,15 @@ import {
   CreateBookingResponse,
   CreateDriverDocumentBody,
   CreateDriverDocumentResponse,
+  CreateExperienceBody,
+  CreateExperienceResponse,
   CreateQuoteBody,
   CreateQuoteResponse,
   UpdateDriverJobStatusBody,
+  DeleteExperienceParams,
+  UpdateExperienceBody,
+  UpdateExperienceParams,
+  UpdateExperienceResponse,
   GetDashboardSummaryResponse,
   GetExperienceParams,
   GetExperienceResponse,
@@ -167,6 +173,67 @@ router.get("/experiences/:id", async (req, res): Promise<void> => {
   }
 
   res.json(GetExperienceResponse.parse(experience));
+});
+
+router.post("/admin/experiences", requireRole("operator"), async (req, res): Promise<void> => {
+  const body = CreateExperienceBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [experience] = await db
+    .insert(experiencesTable)
+    .values({ id: randomUUID(), ...body.data, rating: 0, reviewCount: 0 })
+    .returning();
+
+  res.status(201).json(CreateExperienceResponse.parse(experience));
+});
+
+router.patch("/admin/experiences/:id", requireRole("operator"), async (req, res): Promise<void> => {
+  const params = UpdateExperienceParams.safeParse(req.params);
+  const body = UpdateExperienceBody.safeParse(req.body);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+
+  const [experience] = await db
+    .update(experiencesTable)
+    .set(body.data)
+    .where(eq(experiencesTable.id, params.data.id))
+    .returning();
+
+  if (!experience) {
+    res.status(404).json({ error: "Η εμπειρία δεν βρέθηκε." });
+    return;
+  }
+
+  res.json(UpdateExperienceResponse.parse(experience));
+});
+
+router.delete("/admin/experiences/:id", requireRole("operator"), async (req, res): Promise<void> => {
+  const params = DeleteExperienceParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [experience] = await db
+    .delete(experiencesTable)
+    .where(eq(experiencesTable.id, params.data.id))
+    .returning({ id: experiencesTable.id });
+
+  if (!experience) {
+    res.status(404).json({ error: "Η εμπειρία δεν βρέθηκε." });
+    return;
+  }
+
+  res.status(204).send();
 });
 
 router.post("/quotes", async (req, res): Promise<void> => {
