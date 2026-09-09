@@ -38,22 +38,84 @@ function ExperienceCard({ experience, onBook }: { experience: Experience; onBook
   );
 }
 
-function QuotePanel({ onQuote }: { onQuote: (quote: Quote, input: QuoteInput) => void }) {
+const GREEK_WEEKDAYS = ['κυριακή', 'δευτέρα', 'τρίτη', 'τετάρτη', 'πέμπτη', 'παρασκευή', 'σάββατο'];
+const GREEK_MONTHS = ['ιανουαρίου', 'φεβρουαρίου', 'μαρτίου', 'απριλίου', 'μαΐου', 'ιουνίου', 'ιουλίου', 'αυγούστου', 'σεπτεμβρίου', 'οκτωβρίου', 'νοεμβρίου', 'δεκεμβρίου'];
+const greekWord = (word: string) => new RegExp(`(?<!\\p{L})${word}(?!\\p{L})`, 'u');
+
+function parseFreeTextBooking(text: string, now: Date) {
+  const lower = text.toLowerCase();
+  const result: { date?: string; startTime?: string; durationHours?: string; passengers?: string } = {};
+
+  const toISODate = (d: Date) => d.toISOString().slice(0, 10);
+  if (greekWord('σήμερα').test(lower)) result.date = toISODate(now);
+  else if (greekWord('αύριο').test(lower)) result.date = toISODate(new Date(now.getTime() + 86400000));
+  else if (greekWord('μεθαύριο').test(lower)) result.date = toISODate(new Date(now.getTime() + 2 * 86400000));
+  else {
+    const dmMatch = lower.match(/\b(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?\b/);
+    const dMonthMatch = lower.match(/\b(\d{1,2})\s+(ιανουαρίου|φεβρουαρίου|μαρτίου|απριλίου|μαΐου|ιουνίου|ιουλίου|αυγούστου|σεπτεμβρίου|οκτωβρίου|νοεμβρίου|δεκεμβρίου)(?!\p{L})/u);
+    if (dmMatch) {
+      const day = Number(dmMatch[1]);
+      const month = Number(dmMatch[2]) - 1;
+      const year = dmMatch[3] ? (dmMatch[3].length === 2 ? 2000 + Number(dmMatch[3]) : Number(dmMatch[3])) : now.getFullYear();
+      result.date = toISODate(new Date(year, month, day, 12));
+    } else if (dMonthMatch) {
+      const day = Number(dMonthMatch[1]);
+      const month = GREEK_MONTHS.indexOf(dMonthMatch[2]);
+      result.date = toISODate(new Date(now.getFullYear(), month, day, 12));
+    } else {
+      const weekdayIndex = GREEK_WEEKDAYS.findIndex((w) => greekWord(w).test(lower));
+      if (weekdayIndex >= 0) {
+        const currentDay = now.getDay();
+        let diff = weekdayIndex - currentDay;
+        if (diff <= 0) diff += 7;
+        result.date = toISODate(new Date(now.getTime() + diff * 86400000));
+      }
+    }
+  }
+
+  const timeMatch = lower.match(/\b(\d{1,2})[:.](\d{2})\b/) ?? lower.match(/(?<!\p{L})(?:στις|ώρα)\s*(\d{1,2})(?!\d)/u);
+  if (timeMatch) {
+    let hour = Number(timeMatch[1]);
+    const minute = timeMatch[2] ? Number(timeMatch[2]) : 0;
+    if (greekWord('απόγευμα').test(lower) || greekWord('βράδυ').test(lower)) { if (hour < 12) hour += 12; }
+    result.startTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  }
+
+  const durationMatch = lower.match(/(\d+(?:[.,]\d+)?)\s*(?:ώρες|ώρα|ωρών)/);
+  if (durationMatch) result.durationHours = String(Number(durationMatch[1].replace(',', '.')));
+  else if (/ολοήμερ|όλη\s+τη\s+μέρα/.test(lower)) result.durationHours = '8';
+  else if (/μισή\s+μέρα/.test(lower)) result.durationHours = '4';
+
+  const passengersMatch = lower.match(/(\d+)\s*(?:άτομα|άτομο|επιβάτ\w*|άνθρωποι|ανθρώπους)/);
+  if (passengersMatch) result.passengers = passengersMatch[1];
+
+  return result;
+}
+
+function QuotePanel({ onQuote }: { onQuote: (quote: Quote, input: QuoteInput, freeText: string) => void }) {
   const createQuote = useCreateQuote();
+  const [freeText, setFreeText] = useState('');
+  const [parsedFields, setParsedFields] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({ pickup: 'Ξενοδοχείο Ακτή, Αθήνα', date: '2026-09-15', startTime: '09:30', durationHours: '8', passengers: '4', vehicleType: 'van' as QuoteInput['vehicleType'] });
   const [stops, setStops] = useState<string[]>(['Ναύπλιο']);
   const updateStop = (index: number, value: string) => setStops((prev) => prev.map((stop, i) => (i === index ? value : stop)));
   const addStop = () => setStops((prev) => [...prev, '']);
   const removeStop = (index: number) => setStops((prev) => prev.filter((_, i) => i !== index));
+  const applyFreeText = () => {
+    const parsed = parseFreeTextBooking(freeText, new Date());
+    setForm((prev) => ({ ...prev, ...parsed }));
+    setParsedFields(new Set(Object.keys(parsed)));
+  };
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const input: QuoteInput = { ...form, stops: stops.map((s) => s.trim()).filter(Boolean), durationHours: Number(form.durationHours), passengers: Number(form.passengers) };
-    createQuote.mutate({ data: input }, { onSuccess: (quote) => onQuote(quote, input) });
+    createQuote.mutate({ data: input }, { onSuccess: (quote) => onQuote(quote, input, freeText) });
   };
   return (
     <form onSubmit={submit} className="rounded-3xl bg-primary p-6 text-primary-foreground shadow-xl md:p-8" data-testid="form-quote">
       <div className="flex items-start justify-between gap-4"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Φτιάξε τη δική σου μέρα</p><h2 className="mt-2 font-display text-3xl leading-tight">Από πόρτα σε πόρτα,<br />χωρίς πρόγραμμα-παζλ.</h2></div><SlidersHorizontal className="text-accent" /></div>
-      <div className="mt-7 grid gap-4 sm:grid-cols-2">
+      <div className="mt-6 rounded-2xl bg-white/10 p-4"><label><span className="field-label text-primary-foreground/80">Περιέγραψε τη διαδρομή σου ελεύθερα (προαιρετικό)</span><textarea data-testid="input-free-text-booking" rows={2} value={freeText} onChange={(e) => setFreeText(e.target.value)} placeholder="π.χ. Αύριο στις 10 το πρωί, 4 άτομα, θέλουμε περίπου 6 ώρες με στάση στο Ναύπλιο" className="field-dark w-full resize-none" /></label><button type="button" data-testid="button-apply-free-text" onClick={applyFreeText} disabled={!freeText.trim()} className="mt-2 text-xs font-bold text-accent hover:underline disabled:opacity-40">Συμπλήρωσε αυτόματα τα στοιχεία παρακάτω →</button></div>
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <label className="sm:col-span-2"><span className="field-label">Σημείο παραλαβής</span><input data-testid="input-quote-pickup" required value={form.pickup} onChange={(e) => setForm({ ...form, pickup: e.target.value })} className="field-dark" /></label>
         <div className="sm:col-span-2">
           <span className="field-label">Στάσεις / προορισμός</span>
@@ -67,10 +129,10 @@ function QuotePanel({ onQuote }: { onQuote: (quote: Quote, input: QuoteInput) =>
           </div>
           <button type="button" data-testid="button-add-stop" onClick={addStop} className="mt-2 text-xs font-bold text-accent hover:underline">+ Προσθήκη στάσης</button>
         </div>
-        <label><span className="field-label">Ημερομηνία</span><input data-testid="input-quote-date" type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="field-dark" /></label>
-        <label><span className="field-label">Ώρα εκκίνησης</span><input data-testid="input-quote-time" type="time" required value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} className="field-dark" /></label>
-        <label><span className="field-label">Διάρκεια</span><select data-testid="select-quote-duration" value={form.durationHours} onChange={(e) => setForm({ ...form, durationHours: e.target.value })} className="field-dark"><option value="4">4 ώρες</option><option value="6">6 ώρες</option><option value="8">8 ώρες</option><option value="10">10 ώρες</option></select></label>
-        <label><span className="field-label">Άτομα</span><select data-testid="select-quote-passengers" value={form.passengers} onChange={(e) => setForm({ ...form, passengers: e.target.value })} className="field-dark"><option value="2">2 άτομα</option><option value="4">4 άτομα</option><option value="6">6 άτομα</option><option value="8">8 άτομα</option></select></label>
+        <label><span className="field-label">Ημερομηνία {parsedFields.has('date') && <span className="text-accent">✓ αυτόματα</span>}</span><input data-testid="input-quote-date" type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="field-dark" /></label>
+        <label><span className="field-label">Ώρα εκκίνησης {parsedFields.has('startTime') && <span className="text-accent">✓ αυτόματα</span>}</span><input data-testid="input-quote-time" type="time" required value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} className="field-dark" /></label>
+        <label><span className="field-label">Διάρκεια {parsedFields.has('durationHours') && <span className="text-accent">✓ αυτόματα</span>}</span><select data-testid="select-quote-duration" value={form.durationHours} onChange={(e) => setForm({ ...form, durationHours: e.target.value })} className="field-dark"><option value="4">4 ώρες</option><option value="6">6 ώρες</option><option value="8">8 ώρες</option><option value="10">10 ώρες</option></select></label>
+        <label><span className="field-label">Άτομα {parsedFields.has('passengers') && <span className="text-accent">✓ αυτόματα</span>}</span><select data-testid="select-quote-passengers" value={form.passengers} onChange={(e) => setForm({ ...form, passengers: e.target.value })} className="field-dark"><option value="2">2 άτομα</option><option value="4">4 άτομα</option><option value="6">6 άτομα</option><option value="8">8 άτομα</option></select></label>
         <label><span className="field-label">Όχημα</span><select data-testid="select-quote-vehicle" value={form.vehicleType} onChange={(e) => setForm({ ...form, vehicleType: e.target.value as QuoteInput['vehicleType'] })} className="field-dark"><option value="sedan">Sedan</option><option value="van">Van</option><option value="minibus">Minibus</option><option value="bus">Bus</option></select></label>
       </div>
       <ActionButton type="submit" loading={createQuote.isPending} className="mt-6 w-full bg-accent text-primary hover:bg-[#f6c995]">Υπολόγισε την τιμή <ArrowRight size={16} /></ActionButton>
@@ -84,7 +146,7 @@ export default function Home() {
   const { data: experiences, isLoading, isError, refetch } = useListExperiences({ query: { queryKey: getListExperiencesQueryKey(), staleTime: 300_000 } });
   const createBooking = useCreateBooking();
   const queryClient = useQueryClient();
-  const [quote, setQuote] = useState<{ result: Quote; input: QuoteInput } | null>(null);
+  const [quote, setQuote] = useState<{ result: Quote; input: QuoteInput; freeText: string } | null>(null);
   const [selected, setSelected] = useState<BookingSelection | null>(null);
   const [bookingDone, setBookingDone] = useState(false);
   const [customerName, setCustomerName] = useState('');
@@ -151,11 +213,11 @@ export default function Home() {
       <section id="custom" className="border-y border-primary/10 bg-[#e7ded0] px-5 py-14 md:px-10 md:py-20">
         <div className="mx-auto grid max-w-[1280px] gap-10 lg:grid-cols-[.85fr_1.15fr] lg:items-center">
           <div><p className="font-mono-ui text-[10px] uppercase tracking-[.24em] text-accent">Custom, αλλά απλό</p><h2 className="mt-3 max-w-md font-display text-5xl leading-[.98] text-primary">Τα σημεία σου.<br /><em className="text-[#c96c4c]">Ο ρυθμός σου.</em></h2><p className="mt-5 max-w-md text-sm leading-6 text-muted-foreground">Πες μας από πού ξεκινάς, τι θέλεις να δεις και πόσο χρόνο έχεις. Η τιμή εμφανίζεται πριν αποφασίσεις.</p><div className="mt-8 grid max-w-md gap-3 sm:grid-cols-3"><div><span className="font-display text-2xl text-primary">01</span><p className="mt-1 text-xs leading-5 text-muted-foreground">Συμπληρώνεις τη διαδρομή</p></div><div><span className="font-display text-2xl text-primary">02</span><p className="mt-1 text-xs leading-5 text-muted-foreground">Βλέπεις καθαρή τιμή</p></div><div><span className="font-display text-2xl text-primary">03</span><p className="mt-1 text-xs leading-5 text-muted-foreground">Κλείνεις χωρίς άγχος</p></div></div></div>
-          <QuotePanel onQuote={(result, input) => setQuote({ result, input })} />
+          <QuotePanel onQuote={(result, input, freeText) => setQuote({ result, input, freeText })} />
         </div>
       </section>
 
-       {quote && <div className="fixed inset-0 z-50 grid place-items-center bg-primary/50 p-5 backdrop-blur-sm"><div className="w-full max-w-lg rounded-3xl bg-card p-7 shadow-2xl" data-testid="dialog-quote-result"><div className="flex items-start justify-between"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Η εκτίμησή σου</p><h2 className="mt-2 font-display text-4xl text-primary">{formatEuro(quote.result.total)}</h2><p className="mt-1 text-sm text-muted-foreground">{quote.result.distanceKm} χλμ · {quote.result.durationHours} ώρες · {quote.input.passengers} άτομα</p></div><button data-testid="button-close-quote" onClick={() => setQuote(null)} className="text-muted-foreground hover:text-primary">×</button></div><div className="mt-6 space-y-3 border-y border-border py-5">{quote.result.breakdown.map((line) => <div key={line.label} className="flex justify-between text-sm"><span className="text-muted-foreground">{line.label}</span><span className="font-semibold">{formatEuro(line.amount)}</span></div>)}<div className="flex justify-between pt-2 text-sm font-bold text-primary"><span>Προκαταβολή</span><span>{formatEuro(quote.result.deposit)}</span></div></div><ActionButton data-testid="button-quote-book" onClick={() => { setQuote(null); setSelected({ id: '', title: `Custom διαδρομή · ${quote.input.pickup}`, location: quote.input.stops[quote.input.stops.length - 1] ?? quote.input.pickup, durationHours: quote.result.durationHours, priceFrom: quote.result.total, category: 'Custom', description: '', imageUrl: '', highlights: [], rating: 0, reviewCount: 0, bookingDate: quote.input.date, bookingTime: quote.input.startTime, bookingPassengers: quote.input.passengers, bookingPickup: quote.input.pickup, bookingStops: quote.input.stops }); setCustomerName(user?.fullName ?? ''); setCustomerPhone(user?.primaryPhoneNumber?.phoneNumber ?? ''); setNotes(''); setBookingDone(false); }}>Συνέχισε στην κράτηση <ArrowRight size={16} /></ActionButton></div></div>}
+       {quote && <div className="fixed inset-0 z-50 grid place-items-center bg-primary/50 p-5 backdrop-blur-sm"><div className="w-full max-w-lg rounded-3xl bg-card p-7 shadow-2xl" data-testid="dialog-quote-result"><div className="flex items-start justify-between"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Η εκτίμησή σου</p><h2 className="mt-2 font-display text-4xl text-primary">{formatEuro(quote.result.total)}</h2><p className="mt-1 text-sm text-muted-foreground">{quote.result.distanceKm} χλμ · {quote.result.durationHours} ώρες · {quote.input.passengers} άτομα</p></div><button data-testid="button-close-quote" onClick={() => setQuote(null)} className="text-muted-foreground hover:text-primary">×</button></div><div className="mt-6 space-y-3 border-y border-border py-5">{quote.result.breakdown.map((line) => <div key={line.label} className="flex justify-between text-sm"><span className="text-muted-foreground">{line.label}</span><span className="font-semibold">{formatEuro(line.amount)}</span></div>)}<div className="flex justify-between pt-2 text-sm font-bold text-primary"><span>Προκαταβολή</span><span>{formatEuro(quote.result.deposit)}</span></div></div><ActionButton data-testid="button-quote-book" onClick={() => { setQuote(null); setSelected({ id: '', title: `Custom διαδρομή · ${quote.input.pickup}`, location: quote.input.stops[quote.input.stops.length - 1] ?? quote.input.pickup, durationHours: quote.result.durationHours, priceFrom: quote.result.total, category: 'Custom', description: '', imageUrl: '', highlights: [], rating: 0, reviewCount: 0, bookingDate: quote.input.date, bookingTime: quote.input.startTime, bookingPassengers: quote.input.passengers, bookingPickup: quote.input.pickup, bookingStops: quote.input.stops }); setCustomerName(user?.fullName ?? ''); setCustomerPhone(user?.primaryPhoneNumber?.phoneNumber ?? ''); setNotes(quote.freeText); setBookingDone(false); }}>Συνέχισε στην κράτηση <ArrowRight size={16} /></ActionButton></div></div>}
 
        {selected && <div onClick={() => setSelected(null)} className="fixed inset-0 z-50 grid place-items-center bg-primary/50 p-5 backdrop-blur-sm"><div onClick={(event) => event.stopPropagation()} className="relative w-full max-w-md rounded-3xl bg-card p-7 shadow-2xl" data-testid="dialog-booking"><button data-testid="button-close-booking-dialog" onClick={() => setSelected(null)} aria-label="Κλείσιμο" className="absolute right-5 top-5 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-primary"><X size={18} /></button><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Τελικό βήμα</p><h2 className="mt-2 pr-8 font-display text-3xl text-primary">{selected.title}</h2>{bookingDone ? <div className="mt-6"><SuccessNotice>Το αίτημα κράτησης καταχωρήθηκε. Θα ενημερωθείς στο κινητό σου όταν ανατεθεί οδηγός.</SuccessNotice>{user ? <Link href="/bookings" data-testid="link-view-bookings" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-primary">Δες τις κρατήσεις <ChevronRight size={15} /></Link> : <p className="mt-5 text-xs leading-5 text-muted-foreground">Κράτησες ως επισκέπτης, οπότε δεν κρατάμε ιστορικό κρατήσεων. Αν θες να βλέπεις τις επόμενες κρατήσεις σου, <Link href="/sign-in" className="font-bold text-primary underline">συνδέσου ή δημιούργησε λογαριασμό</Link>.</p>}<button data-testid="button-close-booking-done" onClick={() => setSelected(null)} className="mt-6 w-full rounded-xl bg-primary py-2.5 text-sm font-bold text-primary-foreground">Επιστροφή στην αρχική</button></div> : <><div className="mt-5 space-y-3 rounded-2xl bg-muted/60 p-4 text-sm"><DataTag icon={CalendarDays}>{formatBookingDate(selected.bookingDate)} · {selected.bookingTime}</DataTag><DataTag icon={Users}>{selected.bookingPassengers} επιβάτες</DataTag><DataTag icon={Clock3}>{selected.bookingPickup}</DataTag>{selected.bookingStops.length > 0 && <DataTag icon={ChevronRight}>{selected.bookingStops.join(' → ')}</DataTag>}<div className="flex justify-between border-t border-border pt-3"><span className="text-muted-foreground">Σύνολο</span><strong>{formatEuro(selected.priceFrom)}</strong></div></div>{!user && <label className="mt-4 block"><span className="field-label">Ονοματεπώνυμο</span><input data-testid="input-booking-name" required value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="π.χ. Μαρία Παπαδοπούλου" className="field-light" /></label>}<label className="mt-4 block"><span className="field-label">Κινητό για WhatsApp / Viber</span><input data-testid="input-booking-phone" type="tel" required value={customerPhone} onChange={(event) => setCustomerPhone(event.target.value)} placeholder="+30 69X XXX XXXX" className="field-light" /></label><label className="mt-4 block"><span className="field-label">Πες μας ελεύθερα τι θέλεις (προαιρετικό)</span><textarea data-testid="input-booking-notes" value={notes} onChange={(event) => setNotes(event.target.value)} rows={3} placeholder="π.χ. Θέλω να περάσουμε από 3 χωριά, με στάση 1 ώρα σε καθένα, γύρω στις 6 ώρες συνολικά…" className="field-light w-full resize-none" /></label><p className="mt-3 text-xs leading-5 text-muted-foreground">Η πληρωμή θα προστεθεί σε επόμενο βήμα. Προς το παρόν κρατάμε το αίτημά σου και τα στοιχεία επικοινωνίας. {!user && 'Κάνεις κράτηση ως επισκέπτης — χωρίς λογαριασμό δεν θα μπορείς να δεις ιστορικό κρατήσεων αργότερα.'}</p><ActionButton data-testid="button-confirm-booking" onClick={submitBooking} loading={createBooking.isPending} className="mt-5 w-full">Καταχώρησε αίτημα κράτησης <ArrowRight size={16} /></ActionButton>{createBooking.isError && <p className="mt-3 text-xs text-[#b24d42]" data-testid="text-booking-error">Η κράτηση δεν ολοκληρώθηκε. Έλεγξε τα στοιχεία σου και προσπάθησε ξανά.</p>}<button data-testid="button-cancel-booking" onClick={() => setSelected(null)} className="mt-3 w-full py-2 text-sm text-muted-foreground hover:text-primary">Πίσω</button></>}</div></div>}
     </div>
