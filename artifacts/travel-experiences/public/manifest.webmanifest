@@ -1,0 +1,15 @@
+{
+  "name": "Aperion — Transfers & Experiences",
+  "short_name": "Aperion",
+  "description": "Build your experience. Transfers and experiences built around you.",
+  "lang": "el",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#fffdf8",
+  "theme_color": "#123f50",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
