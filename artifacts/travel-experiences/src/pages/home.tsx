@@ -1,7 +1,7 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
-import { ArrowRight, ArrowUpRight, CalendarDays, ChevronRight, Clock3, SlidersHorizontal, Star, Users, X } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, CalendarDays, ChevronRight, Clock3, MapPin, SlidersHorizontal, Star, Users, X } from 'lucide-react';
 import { useCreateBooking, useCreateQuote, useGetExperience, useListExperiences, getGetExperienceQueryKey, getListExperiencesQueryKey, getListBookingsQueryKey, getGetDashboardSummaryQueryKey } from '@workspace/api-client-react';
 import type { Experience, Quote, QuoteInput } from '@workspace/api-client-react';
 import { ActionButton, DataTag, EmptyState, ErrorState, formatEuro, LoadingState, PageIntro, SuccessNotice } from '@/components/travel-ui';
@@ -92,23 +92,114 @@ function parseFreeTextBooking(text: string, now: Date) {
   return result;
 }
 
+type GeoPoint = { lat: number; lng: number };
+
+interface NominatimResult {
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
+async function searchAddress(query: string): Promise<{ label: string; point: GeoPoint }[]> {
+  if (query.trim().length < 3) return [];
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=5&accept-language=el&countrycodes=gr`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const results: NominatimResult[] = await res.json();
+  return results.map((r) => ({ label: r.display_name, point: { lat: Number(r.lat), lng: Number(r.lon) } }));
+}
+
+async function fetchRealDistanceKm(points: GeoPoint[]): Promise<number | null> {
+  if (points.length < 2) return null;
+  const coordsPath = points.map((p) => `${p.lng},${p.lat}`).join(';');
+  try {
+    const res = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordsPath}?overview=false`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const meters = data?.routes?.[0]?.distance;
+    return typeof meters === 'number' ? Math.round((meters / 1000) * 10) / 10 : null;
+  } catch {
+    return null;
+  }
+}
+
+function AddressField({ value, onChange, onSelectPoint, placeholder, testId }: { value: string; onChange: (text: string) => void; onSelectPoint: (point: GeoPoint | null) => void; placeholder?: string; testId: string }) {
+  const [suggestions, setSuggestions] = useState<{ label: string; point: GeoPoint }[]>([]);
+  const [open, setOpen] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      const results = await searchAddress(value);
+      setSuggestions(results);
+    }, 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [value]);
+
+  return (
+    <div className="relative flex-1">
+      <input
+        data-testid={testId}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => { onChange(e.target.value); onSelectPoint(null); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        className="field-dark w-full"
+      />
+      {open && suggestions.length > 0 && (
+        <ul className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl bg-card text-left shadow-xl">
+          {suggestions.map((s, i) => (
+            <li key={i}>
+              <button
+                type="button"
+                data-testid={`${testId}-suggestion-${i}`}
+                onMouseDown={() => { onChange(s.label); onSelectPoint(s.point); setOpen(false); }}
+                className="flex w-full items-start gap-2 px-3 py-2 text-left text-xs text-primary hover:bg-muted"
+              >
+                <MapPin size={13} className="mt-0.5 shrink-0 text-accent" />
+                <span className="line-clamp-2">{s.label}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function QuotePanel({ onQuote }: { onQuote: (quote: Quote, input: QuoteInput, freeText: string) => void }) {
   const createQuote = useCreateQuote();
   const [freeText, setFreeText] = useState('');
   const [parsedFields, setParsedFields] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({ pickup: 'Ξενοδοχείο Ακτή, Αθήνα', date: '2026-09-15', startTime: '09:30', durationHours: '8', passengers: '4', vehicleType: 'van' as QuoteInput['vehicleType'] });
+  const [pickupPoint, setPickupPoint] = useState<GeoPoint | null>(null);
   const [stops, setStops] = useState<string[]>(['Ναύπλιο']);
+  const [stopPoints, setStopPoints] = useState<Record<number, GeoPoint | null>>({});
+  const [routeStatus, setRouteStatus] = useState<'idle' | 'loading' | 'real' | 'estimate'>('idle');
   const updateStop = (index: number, value: string) => setStops((prev) => prev.map((stop, i) => (i === index ? value : stop)));
+  const setStopPoint = (index: number, point: GeoPoint | null) => setStopPoints((prev) => ({ ...prev, [index]: point }));
   const addStop = () => setStops((prev) => [...prev, '']);
-  const removeStop = (index: number) => setStops((prev) => prev.filter((_, i) => i !== index));
+  const removeStop = (index: number) => { setStops((prev) => prev.filter((_, i) => i !== index)); setStopPoints((prev) => { const next = { ...prev }; delete next[index]; return next; }); };
   const applyFreeText = () => {
     const parsed = parseFreeTextBooking(freeText, new Date());
     setForm((prev) => ({ ...prev, ...parsed }));
     setParsedFields(new Set(Object.keys(parsed)));
   };
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    const input: QuoteInput = { ...form, stops: stops.map((s) => s.trim()).filter(Boolean), durationHours: Number(form.durationHours), passengers: Number(form.passengers) };
+    const cleanStops = stops.map((s) => s.trim()).filter(Boolean);
+    const input: QuoteInput = { ...form, stops: cleanStops, durationHours: Number(form.durationHours), passengers: Number(form.passengers) };
+
+    const routePoints = [pickupPoint, ...stops.map((_, i) => stopPoints[i] ?? null)].filter((p): p is GeoPoint => p !== null);
+    let realDistanceKm: number | undefined;
+    if (pickupPoint && routePoints.length === cleanStops.length + 1) {
+      setRouteStatus('loading');
+      const distance = await fetchRealDistanceKm(routePoints);
+      if (distance) { input.realDistanceKm = distance; realDistanceKm = distance; setRouteStatus('real'); } else setRouteStatus('estimate');
+    } else setRouteStatus('estimate');
+
     createQuote.mutate({ data: input }, { onSuccess: (quote) => onQuote(quote, input, freeText) });
   };
   return (
@@ -116,13 +207,13 @@ function QuotePanel({ onQuote }: { onQuote: (quote: Quote, input: QuoteInput, fr
       <div className="flex items-start justify-between gap-4"><div><p className="font-mono-ui text-[10px] uppercase tracking-[.2em] text-accent">Φτιάξε τη δική σου μέρα</p><h2 className="mt-2 font-display text-3xl leading-tight">Από πόρτα σε πόρτα,<br />χωρίς πρόγραμμα-παζλ.</h2></div><SlidersHorizontal className="text-accent" /></div>
       <div className="mt-6 rounded-2xl bg-white/10 p-4"><label><span className="field-label text-primary-foreground/80">Περιέγραψε τη διαδρομή σου ελεύθερα (προαιρετικό)</span><textarea data-testid="input-free-text-booking" rows={2} value={freeText} onChange={(e) => setFreeText(e.target.value)} placeholder="π.χ. Αύριο στις 10 το πρωί, 4 άτομα, θέλουμε περίπου 6 ώρες με στάση στο Ναύπλιο" className="field-dark w-full resize-none" /></label><button type="button" data-testid="button-apply-free-text" onClick={applyFreeText} disabled={!freeText.trim()} className="mt-2 text-xs font-bold text-accent hover:underline disabled:opacity-40">Συμπλήρωσε αυτόματα τα στοιχεία παρακάτω →</button></div>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <label className="sm:col-span-2"><span className="field-label">Σημείο παραλαβής</span><input data-testid="input-quote-pickup" required value={form.pickup} onChange={(e) => setForm({ ...form, pickup: e.target.value })} className="field-dark" /></label>
+        <label className="sm:col-span-2"><span className="field-label">Σημείο παραλαβής</span><AddressField testId="input-quote-pickup" value={form.pickup} onChange={(text) => setForm({ ...form, pickup: text })} onSelectPoint={setPickupPoint} /></label>
         <div className="sm:col-span-2">
           <span className="field-label">Στάσεις / προορισμός</span>
           <div className="mt-1 space-y-2">
             {stops.map((stop, index) => (
               <div key={index} className="flex gap-2">
-                <input data-testid={`input-quote-stop-${index}`} placeholder={index === stops.length - 1 ? 'Τελικός προορισμός' : `Στάση ${index + 1}`} value={stop} onChange={(e) => updateStop(index, e.target.value)} className="field-dark flex-1" />
+                <AddressField testId={`input-quote-stop-${index}`} placeholder={index === stops.length - 1 ? 'Τελικός προορισμός' : `Στάση ${index + 1}`} value={stop} onChange={(text) => updateStop(index, text)} onSelectPoint={(point) => setStopPoint(index, point)} />
                 {stops.length > 1 && <button type="button" data-testid={`button-remove-stop-${index}`} onClick={() => removeStop(index)} className="rounded-xl border border-white/20 px-3 text-sm text-primary-foreground/80 hover:bg-white/10">×</button>}
               </div>
             ))}
@@ -135,7 +226,7 @@ function QuotePanel({ onQuote }: { onQuote: (quote: Quote, input: QuoteInput, fr
         <label><span className="field-label">Άτομα {parsedFields.has('passengers') && <span className="text-accent">✓ αυτόματα</span>}</span><select data-testid="select-quote-passengers" value={form.passengers} onChange={(e) => setForm({ ...form, passengers: e.target.value })} className="field-dark"><option value="2">2 άτομα</option><option value="4">4 άτομα</option><option value="6">6 άτομα</option><option value="8">8 άτομα</option></select></label>
         <label><span className="field-label">Όχημα</span><select data-testid="select-quote-vehicle" value={form.vehicleType} onChange={(e) => setForm({ ...form, vehicleType: e.target.value as QuoteInput['vehicleType'] })} className="field-dark"><option value="sedan">Sedan</option><option value="van">Van</option><option value="minibus">Minibus</option><option value="bus">Bus</option></select></label>
       </div>
-      <ActionButton type="submit" loading={createQuote.isPending} className="mt-6 w-full bg-accent text-primary hover:bg-[#f6c995]">Υπολόγισε την τιμή <ArrowRight size={16} /></ActionButton>
+      <ActionButton type="submit" loading={createQuote.isPending || routeStatus === 'loading'} className="mt-6 w-full bg-accent text-primary hover:bg-[#f6c995]">{routeStatus === 'loading' ? 'Υπολογίζουμε την πραγματική διαδρομή…' : 'Υπολόγισε την τιμή'} <ArrowRight size={16} /></ActionButton>
       {createQuote.isError && <p className="mt-3 text-xs text-[#f6c995]" data-testid="text-quote-error">Δεν μπορέσαμε να υπολογίσουμε τη διαδρομή. Έλεγξε τα στοιχεία σου.</p>}
     </form>
   );

@@ -78,6 +78,8 @@ export interface QuoteInput {
   /** @minimum 1 */
   passengers: number;
   vehicleType: QuoteInputVehicleType;
+  /** @minimum 0 */
+  realDistanceKm?: number;
 }
 
 export interface PriceLine {

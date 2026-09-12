@@ -136,7 +136,8 @@ export const CreateQuoteBody = zod.object({
   "startTime": zod.string(),
   "durationHours": zod.number().min(1),
   "passengers": zod.number().min(1),
-  "vehicleType": zod.enum(['sedan', 'van', 'minibus', 'bus'])
+  "vehicleType": zod.enum(['sedan', 'van', 'minibus', 'bus']),
+  "realDistanceKm": zod.number().min(0).optional()
 })
 
 export const CreateQuoteResponse = zod.object({

@@ -217,10 +217,14 @@ export function calculateQuote(
     durationHours: number;
     passengers: number;
     vehicleType: "sedan" | "van" | "minibus" | "bus";
+    realDistanceKm?: number;
   },
   pricing: typeof defaultPricingSettings,
 ) {
-  const distanceKm = Math.max(18, 12 + input.stops.length * 18 + input.durationHours * 5);
+  const usedRealDistance = typeof input.realDistanceKm === "number" && input.realDistanceKm > 0;
+  const distanceKm = usedRealDistance
+    ? input.realDistanceKm!
+    : Math.max(18, 12 + input.stops.length * 18 + input.durationHours * 5);
   const vehicleMultiplier = {
     sedan: pricing.vehicleMultiplierSedan,
     van: pricing.vehicleMultiplierVan,
@@ -246,7 +250,7 @@ export function calculateQuote(
     currency: "EUR",
     breakdown: [
       { label: "Βασική χρέωση", amount: base },
-      { label: `Χιλιόμετρα (${Math.round(distanceKm)} km)`, amount: Math.round(distance) },
+      { label: `Χιλιόμετρα (${Math.round(distanceKm)} km${usedRealDistance ? ' · πραγματική διαδρομή' : ' · εκτίμηση'})`, amount: Math.round(distance) },
       { label: `Χρόνος (${input.durationHours} ώρες)`, amount: Math.round(hours) },
       { label: "Προσαρμογή οχήματος & ατόμων", amount: Math.max(0, subtotal - Math.round(base + distance + hours)) },
       { label: "Προμήθεια πλατφόρμας", amount: platformFee },
