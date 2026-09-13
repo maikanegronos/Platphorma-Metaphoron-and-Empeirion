@@ -7,6 +7,8 @@ import type { Experience, Quote, QuoteInput } from '@workspace/api-client-react'
 import { ActionButton, DataTag, EmptyState, ErrorState, formatEuro, LoadingState, PageIntro, SuccessNotice } from '@/components/travel-ui';
 import { useQueryClient } from '@tanstack/react-query';
 import heroImage from '../../attached_assets/aperion-hero.jpg';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 type BookingSelection = Experience & {
   bookingDate: string;
@@ -169,6 +171,48 @@ function AddressField({ value, onChange, onSelectPoint, placeholder, testId }: {
   );
 }
 
+let leafletDefaultIconFixed = false;
+function ensureLeafletDefaultIcon() {
+  if (leafletDefaultIconFixed) return;
+  leafletDefaultIconFixed = true;
+  delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  });
+}
+
+function RouteMap({ points }: { points: { label: string; point: GeoPoint }[] }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+
+  useEffect(() => {
+    ensureLeafletDefaultIcon();
+    if (!containerRef.current || mapRef.current) return;
+    const map = L.map(containerRef.current, { attributionControl: true }).setView([39.5, 22.9], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 19 }).addTo(map);
+    mapRef.current = map;
+    return () => { map.remove(); mapRef.current = null; };
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.eachLayer((layer) => { if (!(layer instanceof L.TileLayer)) map.removeLayer(layer); });
+    if (points.length === 0) return;
+    const latlngs = points.map((p): [number, number] => [p.point.lat, p.point.lng]);
+    points.forEach((p, i) => {
+      L.marker(latlngs[i]).addTo(map).bindPopup(`${i === 0 ? 'Παραλαβή' : `Στάση ${i}`}: ${p.label}`);
+    });
+    if (latlngs.length > 1) L.polyline(latlngs, { color: '#d97a4a', weight: 4 }).addTo(map);
+    if (latlngs.length === 1) map.setView(latlngs[0], 13);
+    else map.fitBounds(L.latLngBounds(latlngs), { padding: [30, 30] });
+  }, [points]);
+
+  return <div ref={containerRef} data-testid="map-route" className="h-56 w-full overflow-hidden rounded-2xl" />;
+}
+
 function QuotePanel({ onQuote }: { onQuote: (quote: Quote, input: QuoteInput, freeText: string) => void }) {
   const createQuote = useCreateQuote();
   const [freeText, setFreeText] = useState('');
@@ -219,6 +263,10 @@ function QuotePanel({ onQuote }: { onQuote: (quote: Quote, input: QuoteInput, fr
             ))}
           </div>
           <button type="button" data-testid="button-add-stop" onClick={addStop} className="mt-2 text-xs font-bold text-accent hover:underline">+ Προσθήκη στάσης</button>
+        </div>
+        <div className="sm:col-span-2">
+          <RouteMap points={[pickupPoint ? { label: form.pickup, point: pickupPoint } : null, ...stops.map((stop, i) => (stopPoints[i] ? { label: stop, point: stopPoints[i]! } : null))].filter((p): p is { label: string; point: GeoPoint } => p !== null)} />
+          <p className="mt-2 text-[11px] text-primary-foreground/60">{[pickupPoint, ...stops.map((_, i) => stopPoints[i])].filter(Boolean).length < stops.length + 1 ? 'Επίλεξε τοποθεσίες από τη λίστα προτάσεων για ακριβή απόσταση διαδρομής.' : 'Όλες οι τοποθεσίες επιλέχθηκαν — θα υπολογιστεί η πραγματική απόσταση.'}</p>
         </div>
         <label><span className="field-label">Ημερομηνία {parsedFields.has('date') && <span className="text-accent">✓ αυτόματα</span>}</span><input data-testid="input-quote-date" type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="field-dark" /></label>
         <label><span className="field-label">Ώρα εκκίνησης {parsedFields.has('startTime') && <span className="text-accent">✓ αυτόματα</span>}</span><input data-testid="input-quote-time" type="time" required value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} className="field-dark" /></label>
